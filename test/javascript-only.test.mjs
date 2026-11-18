@@ -58,8 +58,12 @@ test("package.json scripts, packageManager and engines are the reviewed ones", (
 });
 
 test("every test file is run by test or build", () => {
-  const run = `${pkg.scripts.test} ${pkg.scripts.build}`;
-  for (const f of readdirSync(join(ROOT, "test"))) assert.ok(run.includes(`test/${f}`), f);
+  const run = new Set(`${pkg.scripts.test} ${pkg.scripts.build}`.split(/\s+/));
+  const entries = readdirSync(join(ROOT, "test"), { recursive: true, withFileTypes: true });
+  for (const e of entries.filter((x) => !x.isDirectory())) {
+    const file = relative(ROOT, join(e.parentPath, e.name)).split(/[\\/]/).join("/");
+    assert.ok(run.has(file), file);
+  }
 });
 
 test("lockfile resolves no typescript package", () => {

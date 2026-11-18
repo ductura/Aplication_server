@@ -52,6 +52,7 @@ test("OPTIONS is 204 with Allow over HTTP", async () => {
   assert.equal(res.status, 204);
   assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
   assert.equal(res.headers.get("cache-control"), "no-store");
+  assert.equal(await res.text(), "");
 });
 
 test("HEAD and GET are 200 with no-store over HTTP", async () => {
