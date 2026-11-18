@@ -20,7 +20,7 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 
 ## Provjera zdravlja
 
-`GET /api/health` vraća `200` i `{"status":"ok"}` uz `Cache-Control: no-store`. Odgovor je namjerno uvijek isti: nema vremena, verzije, okoline ni tajni. `HEAD` vraća `200`, `OPTIONS` `204`, a `POST`, `PUT`, `PATCH` i `DELETE` `405`; svi s `Allow: GET, HEAD, OPTIONS`. Na tu rutu će se oslanjati `HEALTHCHECK` u Docker slici i probe u Kubernetesu.
+`GET /api/health` vraća `200` i `{"status":"ok"}` uz `Cache-Control: no-store`. Odgovor je namjerno uvijek isti: nema vremena, verzije, okoline ni tajni. `HEAD` vraća `200` (daje ga Next iz `GET`). `OPTIONS` vraća `204`, a `POST`, `PUT`, `PATCH` i `DELETE` `405`, oba sa zaglavljem `Allow: GET, HEAD, OPTIONS`. Ponašanje kroz pokrenuti server provjerava `test/server.test.mjs` u sklopu `pnpm build`. Na tu rutu će se oslanjati `HEALTHCHECK` u Docker slici i probe u Kubernetesu.
 
 ## Pravila
 

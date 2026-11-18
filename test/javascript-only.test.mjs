@@ -48,7 +48,7 @@ test("package.json declares no TypeScript dependency or typecheck script", () =>
 test("package.json scripts, packageManager and engines are the reviewed ones", () => {
   assert.deepEqual(pkg.scripts, {
     dev: "next dev",
-    build: "next build && node --test test/build-output.test.mjs",
+    build: "next build && node --test test/build-output.test.mjs test/server.test.mjs",
     start: "next start",
     lint: "eslint . --max-warnings 0",
     test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs",
