@@ -21,6 +21,8 @@ test("OPTIONS advertises the same Allow as the 405 responses", async () => {
   const res = await route.OPTIONS(new Request(URL, { method: "OPTIONS" }));
   assert.equal(res.status, 204);
   assert.equal(res.headers.get("allow"), ALLOW);
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  assert.equal(await res.text(), "");
 });
 
 test("route exports every method but HEAD and no caching config", () => {

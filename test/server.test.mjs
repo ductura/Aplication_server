@@ -41,6 +41,7 @@ for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
     assert.equal(res.status, 405);
     assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
     assert.equal(res.headers.get("cache-control"), "no-store");
+    assert.equal(await res.text(), "");
   });
 }
 
@@ -48,6 +49,7 @@ test("OPTIONS is 204 with Allow over HTTP", async () => {
   const res = await fetch(base, { method: "OPTIONS" });
   assert.equal(res.status, 204);
   assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
+  assert.equal(res.headers.get("cache-control"), "no-store");
 });
 
 test("HEAD and GET are 200 with no-store over HTTP", async () => {
