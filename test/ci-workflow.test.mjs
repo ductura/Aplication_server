@@ -1,32 +1,38 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const ci = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
-const uses = [...ci.matchAll(/^\s*-?\s*uses:\s*(\S+)(.*)$/gm)];
+const DIR = new URL("../.github/workflows/", import.meta.url);
+// Normalised to LF so a Windows (CRLF) checkout tests the same content.
+const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
+// The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
+const REVIEWED_SHA256 = "efefe54cec3b8a608255c920bc43be6c0e701f91556488a7bcb2714269fb8d8f";
 
-test("workflow has no privileged trigger and only read permissions", () => {
-  assert.doesNotMatch(ci, /pull_request_target|workflow_run|secrets\.|write-all|:\s*write\b/);
-  assert.match(ci, /^permissions:\n {2}contents: read\n\n/m);
-  assert.match(ci, /persist-credentials: false/);
+test("ci.yml is the only workflow", () => {
+  assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
 });
 
-test("every action is pinned to a full commit SHA with a version comment", () => {
-  assert.ok(uses.length >= 3);
-  for (const [line, ref, rest] of uses) {
-    assert.match(ref, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/, line);
-    assert.match(rest, /^ # v\d+\.\d+\.\d+$/, line);
-  }
+test("ci.yml is exactly the reviewed workflow", () => {
+  assert.equal(createHash("sha256").update(ci).digest("hex"), REVIEWED_SHA256);
 });
 
-test("job runs install, lint, test and build in order on engines Node", () => {
-  const runs = [...ci.matchAll(/^\s*- run: (.+)$/gm)].map((m) => m[1]);
-  assert.deepEqual(runs, [
-    "pnpm install --frozen-lockfile",
-    "pnpm lint",
-    "pnpm test",
-    "pnpm build",
-  ]);
-  assert.match(ci, /node-version-file: package\.json/);
-  assert.match(ci, /^ {2}pull_request:\n {2}push:\n {4}branches: \[main\]$/m);
+test("reviewed workflow: read-only, no privileged triggers, no secrets", () => {
+  assert.doesNotMatch(ci, /pull_request_target|workflow_run|issue_comment|secrets|github\.token|write/);
+  assert.match(ci, /^on:\n {2}pull_request:\n {2}push:\n {4}branches: \[main\]\n\npermissions:\n {2}contents: read\n\n/m);
+  assert.equal(ci.match(/^ +permissions:/gm), null, "no job-level permissions");
+  assert.equal(ci.match(/actions\/checkout@/g).length, ci.match(/persist-credentials: false/g).length);
+});
+
+test("reviewed workflow: actions pinned to full SHAs with a version comment", () => {
+  const uses = [...ci.matchAll(/^ +- uses: (.+)$/gm)].map((m) => m[1]);
+  assert.equal(uses.length, 4);
+  for (const u of uses) assert.match(u, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
+});
+
+test("reviewed workflow: install, lint, test and build run in order", () => {
+  const runs = [...ci.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1]);
+  const steps = ["pnpm install --frozen-lockfile", "pnpm lint", "pnpm test", "pnpm build"];
+  assert.deepEqual(runs, ["node --version", ...steps]);
+  assert.doesNotMatch(ci, /continue-on-error|if: false/);
 });

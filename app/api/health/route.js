@@ -9,9 +9,15 @@ export function GET() {
   return Response.json({ status: "ok" }, { headers: NO_STORE });
 }
 
-export function POST() {
-  return new Response(null, {
-    status: 405,
-    headers: { ...NO_STORE, Allow: "GET, HEAD, OPTIONS" },
-  });
+const ALLOW = "GET, HEAD, OPTIONS";
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: { ...NO_STORE, Allow: ALLOW } });
 }
+
+function methodNotAllowed() {
+  return new Response(null, { status: 405, headers: { ...NO_STORE, Allow: ALLOW } });
+}
+
+export { methodNotAllowed as POST, methodNotAllowed as PUT, methodNotAllowed as PATCH };
+export { methodNotAllowed as DELETE };

@@ -6,14 +6,15 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SKIP_DIRS = new Set(["node_modules", ".next", ".git"]);
-const TS_FILE = /\.(ts|tsx|mts|cts)$/;
-const TS_CONFIG = /^tsconfig.*\.json$/;
+const TS_FILE = /\.(ts|tsx|mts|cts)$/i;
+const TS_CONFIG = /^tsconfig.*\.json$/i;
 
+// Generated folders are skipped only at the repository root.
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) out.push(...walk(join(dir, entry.name)));
+      if (dir !== ROOT || !SKIP_DIRS.has(entry.name)) out.push(...walk(join(dir, entry.name)));
     } else {
       out.push(join(dir, entry.name));
     }
@@ -44,12 +45,21 @@ test("package.json declares no TypeScript dependency or typecheck script", () =>
   assert.equal(pkg.scripts.typecheck, undefined);
 });
 
-test("package.json has the required scripts, packageManager and engines", () => {
-  for (const name of ["dev", "build", "start", "lint", "test"]) {
-    assert.equal(typeof pkg.scripts[name], "string", `script ${name}`);
-  }
-  assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+/);
+test("package.json scripts, packageManager and engines are the reviewed ones", () => {
+  assert.deepEqual(pkg.scripts, {
+    dev: "next dev",
+    build: "next build && node --test test/build-output.test.mjs",
+    start: "next start",
+    lint: "eslint . --max-warnings 0",
+    test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs",
+  });
+  assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
   assert.equal(pkg.engines.node, "^24.11.0 || ^26.0.0");
+});
+
+test("every test file is run by test or build", () => {
+  const run = `${pkg.scripts.test} ${pkg.scripts.build}`;
+  for (const f of readdirSync(join(ROOT, "test"))) assert.ok(run.includes(`test/${f}`), f);
 });
 
 test("lockfile resolves no typescript package", () => {
