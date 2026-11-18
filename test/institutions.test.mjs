@@ -6,12 +6,13 @@ import { afterEach, test } from "node:test";
 import * as route from "../app/api/admin/institutions/route.js";
 import { FAKULTETI, IZVOR, nadjiFakultet } from "../institutions/fakulteti.js";
 import { InstitucijaGreska, stvoriInstituciju } from "../institutions/stvori.js";
+import { izdajToken, TRAJANJE_S } from "../lib/admin-sesija.js";
 
 const URL = "http://localhost/api/admin/institutions";
-const TOKEN = "t".repeat(40);
+const SECRET = "t".repeat(40);
 const saved = { ...process.env };
 afterEach(() => {
-  for (const k of ["INSTITUTIONS_ADMIN_TOKEN", "AAI_OIDC_ISSUER", "DATABASE_URL"]) {
+  for (const k of ["DUCTURA_ADMIN_TOKEN_SECRET", "AAI_OIDC_ISSUER", "DATABASE_URL"]) {
     if (k in saved) process.env[k] = saved[k];
     else delete process.env[k];
   }
@@ -75,44 +76,65 @@ test("a valid request without DATABASE_URL fails on the missing database, not on
   await assert.rejects(stvoriInstituciju({ ...OK, issuer: undefined }), /DATABASE_URL is not set/);
 });
 
-const call = (method, { auth, body, type = "application/json" } = {}) => {
+const call = (method, { cookie, body, type = "application/json" } = {}) => {
   const headers = { "content-type": type };
-  if (auth !== undefined) headers.authorization = auth;
+  if (cookie !== undefined) headers.cookie = cookie;
   return route[method](new Request(URL, { method, headers, body }));
 };
 
-test("routes are closed (503) while no admin token is configured", async () => {
-  delete process.env.INSTITUTIONS_ADMIN_TOKEN;
-  for (const method of ["GET", "POST"]) {
-    const res = await call(method, { auth: `Bearer ${TOKEN}`, body: method === "POST" ? "{}" : undefined });
-    assert.equal(res.status, 503);
-    assert.equal(res.headers.get("cache-control"), "no-store");
-    assert.deepEqual(await res.json(), { error: "admin_nije_dostupan" });
-  }
-  process.env.INSTITUTIONS_ADMIN_TOKEN = "short";
-  assert.equal((await call("GET", { auth: "Bearer short" })).status, 503);
-});
+// A signed-in platform admin: the ductura_admin cookie of lib/admin-sesija.js.
+const prijavljen = (ime = "ana", nowMs = Date.now()) => {
+  process.env.DUCTURA_ADMIN_TOKEN_SECRET = SECRET;
+  return `ductura_admin=${izdajToken(ime, nowMs)}`;
+};
 
-test("routes refuse a missing or wrong bearer token with 401", async () => {
-  process.env.INSTITUTIONS_ADMIN_TOKEN = TOKEN;
-  for (const auth of [undefined, "", TOKEN, `bearer ${TOKEN}`, `Bearer ${TOKEN}x`, `Bearer ${TOKEN.slice(1)}`, `Bearer  ${TOKEN}`, `Basic ${TOKEN}`]) {
+test("routes are closed (401) without the admin session secret", async () => {
+  const cookie = prijavljen();
+  for (const secret of [undefined, "short"]) {
+    if (secret === undefined) delete process.env.DUCTURA_ADMIN_TOKEN_SECRET;
+    else process.env.DUCTURA_ADMIN_TOKEN_SECRET = secret;
     for (const method of ["GET", "POST"]) {
-      const res = await call(method, { auth, body: method === "POST" ? JSON.stringify(OK) : undefined });
-      assert.equal(res.status, 401, `${method} ${auth}`);
+      const res = await call(method, { cookie, body: method === "POST" ? "{}" : undefined });
+      assert.equal(res.status, 401);
+      assert.equal(res.headers.get("cache-control"), "no-store");
       assert.deepEqual(await res.json(), { error: "nije_prijavljen" });
     }
   }
 });
 
+test("routes refuse a missing, forged, expired or bearer admin session with 401", async () => {
+  const valid = prijavljen().slice("ductura_admin=".length);
+  const expired = prijavljen("ana", Date.now() - TRAJANJE_S * 1000 - 1000).slice("ductura_admin=".length);
+  for (const cookie of [
+    undefined,
+    "",
+    `ductura_admin=${valid}x`,
+    `ductura_admin=${expired}`,
+    `ductura_admin=${valid}; ductura_admin=${valid}`,
+    `other=${valid}`,
+  ]) {
+    for (const method of ["GET", "POST"]) {
+      const res = await call(method, { cookie, body: method === "POST" ? JSON.stringify(OK) : undefined });
+      assert.equal(res.status, 401, `${method} ${cookie}`);
+      assert.deepEqual(await res.json(), { error: "nije_prijavljen" });
+    }
+  }
+  // The old operator bearer key is no way in any more.
+  const res = await route.GET(new Request(URL, { headers: { authorization: `Bearer ${valid}` } }));
+  assert.equal(res.status, 401);
+  // Signed with another secret.
+  process.env.DUCTURA_ADMIN_TOKEN_SECRET = "o".repeat(40);
+  assert.equal((await call("GET", { cookie: `ductura_admin=${valid}` })).status, 401);
+});
+
 test("POST checks content type, size and JSON before creating anything", async () => {
-  process.env.INSTITUTIONS_ADMIN_TOKEN = TOKEN;
+  const cookie = prijavljen();
   delete process.env.DATABASE_URL;
-  const auth = `Bearer ${TOKEN}`;
-  assert.equal((await call("POST", { auth, body: "{}", type: "text/plain" })).status, 415);
-  assert.equal((await call("POST", { auth, body: JSON.stringify({ x: "a".repeat(17_000) }) })).status, 413);
-  assert.deepEqual(await (await call("POST", { auth, body: "{" })).json(), { error: "neispravan_json" });
-  for (const body of ["null", "[]", "5"]) assert.equal((await call("POST", { auth, body })).status, 400);
-  const res = await call("POST", { auth, body: JSON.stringify({ ...OK, fakultetId: "nema" }) });
+  assert.equal((await call("POST", { cookie, body: "{}", type: "text/plain" })).status, 415);
+  assert.equal((await call("POST", { cookie, body: JSON.stringify({ x: "a".repeat(17_000) }) })).status, 413);
+  assert.deepEqual(await (await call("POST", { cookie, body: "{" })).json(), { error: "neispravan_json" });
+  for (const body of ["null", "[]", "5"]) assert.equal((await call("POST", { cookie, body })).status, 400);
+  const res = await call("POST", { cookie, body: JSON.stringify({ ...OK, fakultetId: "nema" }) });
   assert.equal(res.status, 400);
   assert.equal((await res.json()).error, "nepoznat_fakultet");
 });
