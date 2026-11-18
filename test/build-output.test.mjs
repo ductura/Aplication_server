@@ -21,6 +21,9 @@ test("API routes are not prerendered as static content", () => {
   assert.ok(routes.includes("/"), "manifest must list the static home page");
   assert.equal(routes.includes("/api/health"), false);
   assert.equal(routes.includes("/api/admin/me"), false);
+  for (const body of ["health.body", "admin/me.body"]) {
+    assert.equal(existsSync(join(NEXT, "server", "app", "api", body)), false, body);
+  }
 });
 
 test("home page is rendered in Croatian", () => {

@@ -1,16 +1,12 @@
-import { requireAdmin } from "../../../../lib/auth/require-admin.js";
+import { createAdminMeHandler } from "../../../../lib/auth/admin-me.js";
+import { methodNotAllowed } from "../../../../lib/http/methods.js";
 
-// No authentication exists yet (JWT arrives in DAN-1105), so the deployed route
-// always sees no identity and answers 401. Tests inject an identity through
-// createAdminMeHandler; there is no fake provider or environment switch.
-const noIdentity = () => null;
+export { OPTIONS } from "../../../../lib/http/methods.js";
 
-export function createAdminMeHandler(getIdentity) {
-  return async function GET(request) {
-    const denied = requireAdmin(await getIdentity(request));
-    if (denied) return denied;
-    return Response.json({ role: "admin" }, { headers: { "Cache-Control": "no-store" } });
-  };
-}
+// No authentication exists yet, so the deployed route never has an identity and
+// always answers 401. Tests inject identities through createAdminMeHandler;
+// there is no fake provider or environment switch that could open it.
+export const GET = createAdminMeHandler(() => null);
 
-export const GET = createAdminMeHandler(noIdentity);
+export { methodNotAllowed as POST, methodNotAllowed as PUT, methodNotAllowed as PATCH };
+export { methodNotAllowed as DELETE };
