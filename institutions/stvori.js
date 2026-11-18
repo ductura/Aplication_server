@@ -147,7 +147,7 @@ export async function stvoriInstituciju(ulaz, { pool } = {}) {
 export async function popisInstitucija({ pool = dohvatiPool() } = {}) {
   const { rows } = await pool.query(
     `SELECT i.id, i.fakultet_id, i.slug, i.display_name, i.aai_home_org, i.oidc_issuer, i.created_at,
-            p.state, p.requested_at, p.activated_at,
+            p.state, p.requested_at, p.activated_at, p.institution_server_id, p.error_code, p.last_error, p.attempts,
             (SELECT coalesce(jsonb_object_agg(c.role, c.n), '{}'::jsonb)
                FROM (SELECT a.role, count(*)::integer AS n FROM institutions.account a
                      WHERE a.institution_id = i.id GROUP BY a.role) c) AS racuni
@@ -164,6 +164,14 @@ export async function popisInstitucija({ pool = dohvatiPool() } = {}) {
     issuer: r.oidc_issuer,
     racuni: r.racuni,
     stvorena: r.created_at,
-    provisioning: { stanje: r.state, zatrazeno: r.requested_at, aktivirano: r.activated_at },
+    provisioning: {
+      stanje: r.state,
+      zatrazeno: r.requested_at,
+      aktivirano: r.activated_at,
+      institutionServerId: r.institution_server_id,
+      kodGreske: r.error_code,
+      zadnjaGreska: r.last_error,
+      pokusaja: r.attempts,
+    },
   }));
 }
