@@ -7,7 +7,7 @@ const DIR = new URL("../.github/workflows/", import.meta.url);
 // Normalised to LF so a Windows (CRLF) checkout tests the same content.
 const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
 // The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
-const REVIEWED_SHA256 = "efefe54cec3b8a608255c920bc43be6c0e701f91556488a7bcb2714269fb8d8f";
+const REVIEWED_SHA256 = "d465fd3544f19853d5aed9f0a88a28b68cda8065926e5985a307ef0adcfd6c13";
 
 test("ci.yml is the only workflow", () => {
   assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
@@ -26,13 +26,14 @@ test("reviewed workflow: read-only, no privileged triggers, no secrets", () => {
 
 test("reviewed workflow: actions pinned to full SHAs with a version comment", () => {
   const uses = [...ci.matchAll(/^ +- uses: (.+)$/gm)].map((m) => m[1]);
-  assert.equal(uses.length, 4);
+  assert.equal(uses.length, 3);
   for (const u of uses) assert.match(u, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
 });
 
 test("reviewed workflow: install, lint, test and build run in order", () => {
   const runs = [...ci.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1]);
-  const steps = ["pnpm install --frozen-lockfile", "pnpm lint", "pnpm test", "pnpm build"];
-  assert.deepEqual(runs, ["node --version", ...steps]);
+  const install = "pnpm install --frozen-lockfile";
+  const audit = "pnpm audit --audit-level low";
+  assert.deepEqual(runs, ["node --version", install, audit, "pnpm lint", "pnpm test", "pnpm build"]);
   assert.doesNotMatch(ci, /continue-on-error|if: false/);
 });

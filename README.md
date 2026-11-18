@@ -1,6 +1,6 @@
 # Aplication_server
 
-Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) na svakom PR-u radi install, lint, test, build i dependency review; workflow je zaključan testom `test/ci-workflow.test.mjs`. Docker sliku i Kubernetes manifeste dodaju sljedeći PR-ovi zadatka DAN-1103; svaki PR prolazi review i QA prije spajanja.
+Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) na svakom PR-u radi install, `pnpm audit`, lint, test i build; workflow je zaključan testom `test/ci-workflow.test.mjs`. Docker sliku i Kubernetes manifeste dodaju sljedeći PR-ovi zadatka DAN-1103; svaki PR prolazi review i QA prije spajanja.
 
 ## Zahtjevi
 
