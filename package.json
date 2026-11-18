@@ -12,7 +12,7 @@
     "build": "next build && node --test test/build-output.test.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
-    "test": "node --test test/health.test.mjs test/javascript-only.test.mjs"
+    "test": "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs"
   },
   "dependencies": {
     "next": "16.4.6",

@@ -1,11 +1,11 @@
 # Aplication_server
 
-Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. Docker sliku, Kubernetes manifeste i CI dodaju sljedeći PR-ovi zadatka DAN-1103; svaki PR prolazi review i QA prije spajanja.
+Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) na svakom PR-u radi install, lint, test i build. Docker sliku i Kubernetes manifeste dodaju sljedeći PR-ovi zadatka DAN-1103; svaki PR prolazi review i QA prije spajanja.
 
 ## Zahtjevi
 
 - Node.js LTS, najmanje 24.11 (slika i CI koriste Node 26 LTS).
-- pnpm u verziji iz polja `packageManager` u `package.json` (najlakše kroz `corepack enable`).
+- pnpm u verziji iz polja `packageManager` u `package.json` (Node 26 nema corepack: `npm install --global pnpm@<verzija>`).
 
 ## Naredbe
 
