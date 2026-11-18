@@ -18,7 +18,7 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 | `pnpm build` | produkcijski build |
 | `pnpm start` | pokreće produkcijski build |
 | `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` na bazu iz `DATABASE_URL` |
-| `pnpm institutions:podigni` | podiže zatražene instance u bazi Institution_servera (`INSTITUTION_DATABASE_URL`) |
+| `pnpm instance:podigni` | ponovno šalje zatražene instance Institution_serveru preko HTTP-a (`INSTITUTION_SERVER_URL`, `DUCTURA_PROVISIONING_TOKEN`) |
 | `pnpm test:db` | testovi institucija nad pravim PostgreSQL-om (`DATABASE_URL` na testnu bazu) |
 
 ## Provjera zdravlja
@@ -27,9 +27,9 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 
 ## Institucije
 
-Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`.
+Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`. Instanca se podiže samo preko HTTP-a (`POST /internal/v1/institutions` na Institution_serveru); Aplication_server nema pristup bazi Institution_servera. Varijable okoline su u [`.env.example`](.env.example).
 
 ## Pravila
 
 - Samo JavaScript: nema `.ts`/`.tsx` datoteka, `tsconfig` ni koraka typecheck; to provjerava `test/javascript-only.test.mjs`.
-- Nema tajni u repozitoriju; `.env` datoteke su u `.gitignore`.
+- Nema tajni u repozitoriju; `.env` datoteke su u `.gitignore`, osim `.env.example` bez vrijednosti tajni.
