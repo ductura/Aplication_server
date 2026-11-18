@@ -33,7 +33,12 @@ test("repository has no TypeScript sources or tsconfig", () => {
 });
 
 test("package.json declares no TypeScript dependency or typecheck script", () => {
-  const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies };
+  const deps = {
+    ...pkg.dependencies,
+    ...pkg.devDependencies,
+    ...pkg.optionalDependencies,
+    ...pkg.peerDependencies,
+  };
   const tsDeps = Object.keys(deps).filter((d) => d === "typescript" || d.startsWith("@types/"));
   assert.deepEqual(tsDeps, []);
   assert.equal(pkg.scripts.typecheck, undefined);
@@ -44,5 +49,11 @@ test("package.json has the required scripts, packageManager and engines", () => 
     assert.equal(typeof pkg.scripts[name], "string", `script ${name}`);
   }
   assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+/);
-  assert.match(pkg.engines.node, /^>=\d+/);
+  assert.equal(pkg.engines.node, "^24.11.0 || ^26.0.0");
+});
+
+test("lockfile resolves no typescript package", () => {
+  const lock = readFileSync(join(ROOT, "pnpm-lock.yaml"), "utf8");
+  assert.match(lock, /\bnext@16\./, "lockfile must be readable");
+  assert.doesNotMatch(lock, /^\s+'?typescript@/m);
 });
