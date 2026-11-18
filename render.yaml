@@ -1,0 +1,35 @@
+# Render Blueprint for Aplication_server (docs/DEPLOY.md). Only names are here:
+# every secret is entered by hand in the Render Dashboard (sync: false), and
+# Render asks for those only when the Blueprint is first created.
+# Spec: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: ductura-aplication-server
+    runtime: docker
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    # Migrations of institutions/ and admin/ before each deploy (paid plans
+    # only; on the free plan run `pnpm db:migrate` by hand, docs/DEPLOY.md).
+    preDeployCommand: node institutions/migrate.js && node admin/migrate.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ductura-aplication-db
+          property: connectionString
+      # https URL of Institution_server, no path (POST /internal/v1/institutions).
+      - key: INSTITUTION_SERVER_URL
+        sync: false
+      # Same value as on Institution_server, at least 32 characters.
+      - key: DUCTURA_PROVISIONING_TOKEN
+        sync: false
+      # HMAC key of the ductura_admin cookie, at least 32 characters.
+      - key: DUCTURA_ADMIN_TOKEN_SECRET
+        sync: false
+
+databases:
+  - name: ductura-aplication-db
+    region: frankfurt
+    databaseName: ductura
+    postgresMajorVersion: "17"
