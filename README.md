@@ -38,7 +38,7 @@ Administrator platforme prijavljuje se korisničkim imenom i lozinkom (ugovor Du
 - `POST /api/admin/prijava` `{korisnickoIme, lozinka}`: samo `application/json`, najviše 4 KB. Krivo ime, kriva lozinka i nepoznata polja daju isti `401 {"greska":"prijava_neuspjesna"}`; hash se provjerava i kad ime ne postoji. Najviše 5 pokušaja u 15 minuta po imenu i po IP-u (zadnji unos `X-Forwarded-For`, dakle onaj koji je dodao edge proxy), zatim `429` i `Retry-After`. Uspjeh vraća `200 {korisnickoIme}` i kolačić `ductura_admin` (HttpOnly, SameSite=Strict, Path=/, 8 h, `Secure` kad je `NODE_ENV=production`).
 - `POST /api/admin/odjava` briše kolačić (`204`). `GET /api/admin/ja` vraća `{korisnickoIme}` ili `401`.
 - Token je potpisan HMAC-SHA256 tajnom iz `DUCTURA_ADMIN_TOKEN_SECRET` (najmanje 32 znaka). Bez nje prijava vraća `503`. Promjena tajne poništava sve sesije.
-- Čuvar za rute administratora je `adminIzZahtjeva(request)` iz `lib/admin-sesija.js`.
+- Čuvar za rute administratora je `adminIzZahtjeva(request)` iz `lib/admin-sesija.js`. Iza njega su `GET`/`POST /api/admin/institutions` i `GET /api/admin/fakulteti` (`200 {"fakulteti":[{id, naziv, web}]}`, popis za obrazac).
 
 Lokalno (lozinka nikad u repo, log ni argumente; `.local/` je u `.gitignore`):
 
