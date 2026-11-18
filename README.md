@@ -18,6 +18,7 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 | `pnpm build` | produkcijski build |
 | `pnpm start` | pokreće produkcijski build |
 | `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` na bazu iz `DATABASE_URL` |
+| `pnpm institutions:podigni` | podiže zatražene instance u bazi Institution_servera (`INSTITUTION_DATABASE_URL`) |
 | `pnpm test:db` | testovi institucija nad pravim PostgreSQL-om (`DATABASE_URL` na testnu bazu) |
 
 ## Provjera zdravlja

@@ -52,8 +52,9 @@ test("package.json scripts, packageManager and engines are the reviewed ones", (
     start: "next start",
     lint: "eslint . --max-warnings 0",
     test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs test/institutions.test.mjs",
-    "test:db": "node --test test/institutions-db.test.mjs",
+    "test:db": "node --test --test-concurrency=1 test/institutions-db.test.mjs test/institutions-podigni-db.test.mjs",
     "db:migrate": "node institutions/migrate.js",
+    "institutions:podigni": "node institutions/podigni.js",
   });
   assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
   assert.equal(pkg.engines.node, "^24.11.0 || ^26.0.0");
