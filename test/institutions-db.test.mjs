@@ -9,10 +9,11 @@ import pg from "pg";
 import * as route from "../app/api/admin/institutions/route.js";
 import { migracije, primijeniMigracije } from "../institutions/migrate.js";
 import { InstitucijaGreska, popisInstitucija, stvoriInstituciju } from "../institutions/stvori.js";
+import { izdajToken } from "../lib/admin-sesija.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const ISSUER = "https://login.aai.example.hr/oidc";
-const TOKEN = "k".repeat(40);
+const SECRET = "k".repeat(40);
 let pool;
 
 before(async () => {
@@ -219,10 +220,10 @@ test("bind_account ties a person to a free account of the role at first AAI logi
 });
 
 test("POST and GET /api/admin/institutions over the real database", async () => {
-  process.env.INSTITUTIONS_ADMIN_TOKEN = TOKEN;
+  process.env.DUCTURA_ADMIN_TOKEN_SECRET = SECRET;
   process.env.AAI_OIDC_ISSUER = ISSUER;
   try {
-    const headers = { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" };
+    const headers = { cookie: `ductura_admin=${izdajToken("ana")}`, "content-type": "application/json" };
     const body = JSON.stringify({
       fakultetId: "fer",
       aaiDomena: "fer.example.hr",
@@ -248,7 +249,7 @@ test("POST and GET /api/admin/institutions over the real database", async () => 
     assert.deepEqual(institucije[0].racuni, { student: 200, teacher: 50, institution_admin: 1, network_engineer: 3 });
     assert.equal(institucije[0].provisioning.stanje, "zatrazena");
   } finally {
-    delete process.env.INSTITUTIONS_ADMIN_TOKEN;
+    delete process.env.DUCTURA_ADMIN_TOKEN_SECRET;
     delete process.env.AAI_OIDC_ISSUER;
   }
 });

@@ -74,7 +74,7 @@ Prvog admina institucije operater imenuje na Institution_serveru nakon prve prij
 
 `POST /api/admin/institutions` prima JSON s istim poljima i vraća `201`. Na isti fakultet ili istu domenu vraća `409`, a na neispravan unos `400`. `GET /api/admin/institutions` vraća popis sa stanjem zahtjeva i brojem računa po ulozi.
 
-**TODO (admin sesija):** u `main` još nema admin sesije (DAN-1104). Do tada su rute zatvorene: bez `INSTITUTIONS_ADMIN_TOKEN` (najmanje 32 znaka) u okolini poslužitelja vraćaju `503`, a bez točnog `Authorization: Bearer` tokena `401`. To je ključ operatera za API, ne način prijave osobe.
+Obje rute traže prijavljenog administratora platforme: kolačić `ductura_admin` koji provjerava `adminIzZahtjeva` iz `lib/admin-sesija.js` (vidi glavni README). Bez valjane sesije vraćaju `401 {"error":"nije_prijavljen"}`.
 
 ## Testovi
 

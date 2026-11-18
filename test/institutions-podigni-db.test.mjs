@@ -11,11 +11,12 @@ import { primijeniMigracije } from "../institutions/migrate.js";
 import { podigniInstance, podigniNakonStvaranja } from "../institutions/podigni.js";
 import { popisInstitucija, stvoriInstituciju } from "../institutions/stvori.js";
 import { LAZNI_TOKEN, pokreniLazniInstitutionServer } from "../institutions/test-fixtures/lazni-institution-server.js";
+import { izdajToken } from "../lib/admin-sesija.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const ISSUER = "http://localhost:8090";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const ENV = ["INSTITUTION_SERVER_URL", "DUCTURA_PROVISIONING_TOKEN", "INSTITUTIONS_ADMIN_TOKEN", "AAI_OIDC_ISSUER"];
+const ENV = ["INSTITUTION_SERVER_URL", "DUCTURA_PROVISIONING_TOKEN", "DUCTURA_ADMIN_TOKEN_SECRET", "AAI_OIDC_ISSUER"];
 const saved = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
 let pool;
 let lazni;
@@ -214,14 +215,14 @@ test("podigniNakonStvaranja raises only that institution, and waits without conf
 });
 
 test("POST /api/admin/institutions raises the instance at once and answers with its state", async () => {
-  process.env.INSTITUTIONS_ADMIN_TOKEN = "t".repeat(40);
+  process.env.DUCTURA_ADMIN_TOKEN_SECRET = "t".repeat(40);
   process.env.INSTITUTION_SERVER_URL = lazni.url;
   process.env.DUCTURA_PROVISIONING_TOKEN = LAZNI_TOKEN;
   const post = (body) =>
     route.POST(
       new Request("http://localhost/api/admin/institutions", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${"t".repeat(40)}` },
+        headers: { "content-type": "application/json", cookie: `ductura_admin=${izdajToken("ana")}` },
         body: JSON.stringify(body),
       }),
     );

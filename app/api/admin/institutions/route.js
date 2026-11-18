@@ -1,11 +1,11 @@
 // POST creates an institution from one faculty, GET lists them with the state
-// of their instance request. Both sit behind the admin gate in
-// institutions/admin.js (TODO: admin session). A new institution is sent to
+// of their instance request. Both are only for a signed-in platform admin
+// (lib/admin-sesija.js, cookie ductura_admin). A new institution is sent to
 // Institution_server at once (institutions/podigni.js); the 201 carries the
 // state that attempt left.
-import { provjeriAdmina } from "../../../../institutions/admin.js";
 import { podigniNakonStvaranja } from "../../../../institutions/podigni.js";
 import { InstitucijaGreska, popisInstitucija, stvoriInstituciju } from "../../../../institutions/stvori.js";
+import { adminIzZahtjeva } from "../../../../lib/admin-sesija.js";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const ALLOW = "GET, HEAD, POST, OPTIONS";
@@ -15,8 +15,7 @@ const STATUS = { neispravan_unos: 400, nepoznat_fakultet: 400, vec_postoji: 409 
 const json = (body, status) => Response.json(body, { status, headers: NO_STORE });
 
 function zabranjeno(request) {
-  const denied = provjeriAdmina(request);
-  return denied && json({ error: denied.error }, denied.status);
+  return adminIzZahtjeva(request) ? null : json({ error: "nije_prijavljen" }, 401);
 }
 
 export async function GET(request) {
