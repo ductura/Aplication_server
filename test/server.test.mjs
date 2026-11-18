@@ -26,8 +26,10 @@ before(async () => {
     cwd: ROOT,
     stdio: "ignore",
   });
-  for (let i = 0; i < 100; i += 1) {
-    if (await fetch(base).then(() => true, () => false)) return;
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const signal = AbortSignal.timeout(Math.max(1, deadline - Date.now()));
+    if (await fetch(base, { signal }).then(() => true, () => false)) return;
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error("next start did not answer within 10 s");
