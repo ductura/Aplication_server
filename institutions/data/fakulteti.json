@@ -1,0 +1,168 @@
+{
+  "format": "ductura-fakulteti-v1",
+  "izvor": "https://www.unizg.hr/o-sveucilistu/sastavnice-sveucilista/fakulteti/",
+  "preuzeto": "2026-11-18",
+  "napomena": "Naziv i web su kako ih navodi izvor. id je prva oznaka domene weba; Fakultet zdravstvenih studija na izvoru nema web, pa mu je id kratica naziva, a web null.",
+  "fakulteti": [
+    {
+      "id": "agr",
+      "naziv": "Agronomski fakultet",
+      "web": "http://www.agr.hr"
+    },
+    {
+      "id": "arhitekt",
+      "naziv": "Arhitektonski fakultet",
+      "web": "http://www.arhitekt.hr"
+    },
+    {
+      "id": "erf",
+      "naziv": "Edukacijsko-rehabilitacijski fakultet",
+      "web": "http://www.erf.hr"
+    },
+    {
+      "id": "efzg",
+      "naziv": "Ekonomski fakultet",
+      "web": "http://www.efzg.hr"
+    },
+    {
+      "id": "fer",
+      "naziv": "Fakultet elektrotehnike i računarstva",
+      "web": "http://www.fer.hr"
+    },
+    {
+      "id": "ffrz",
+      "naziv": "Fakultet filozofije i religijskih znanosti",
+      "web": "http://www.ffrz.unizg.hr"
+    },
+    {
+      "id": "hrstud",
+      "naziv": "Fakultet hrvatskih studija",
+      "web": "https://www.hrstud.unizg.hr"
+    },
+    {
+      "id": "fkit",
+      "naziv": "Fakultet kemijskog inženjerstva i tehnologije",
+      "web": "http://www.fkit.hr"
+    },
+    {
+      "id": "foi",
+      "naziv": "Fakultet organizacije i informatike",
+      "web": "http://www.foi.hr"
+    },
+    {
+      "id": "fpzg",
+      "naziv": "Fakultet političkih znanosti",
+      "web": "http://www.fpzg.hr"
+    },
+    {
+      "id": "fpz",
+      "naziv": "Fakultet prometnih znanosti",
+      "web": "https://www.fpz.unizg.hr"
+    },
+    {
+      "id": "fsb",
+      "naziv": "Fakultet strojarstva i brodogradnje",
+      "web": "http://www.fsb.hr"
+    },
+    {
+      "id": "sumfak",
+      "naziv": "Fakultet šumarstva i drvne tehnologije",
+      "web": "http://www.sumfak.hr"
+    },
+    {
+      "id": "fzs",
+      "naziv": "Fakultet zdravstvenih studija",
+      "web": null
+    },
+    {
+      "id": "pharma",
+      "naziv": "Farmaceutsko-biokemijski fakultet",
+      "web": "http://www.pharma.hr"
+    },
+    {
+      "id": "ffzg",
+      "naziv": "Filozofski fakultet",
+      "web": "http://www.ffzg.hr"
+    },
+    {
+      "id": "geof",
+      "naziv": "Geodetski fakultet",
+      "web": "http://www.geof.hr"
+    },
+    {
+      "id": "gfv",
+      "naziv": "Geotehnički fakultet",
+      "web": "http://www.gfv.hr"
+    },
+    {
+      "id": "grad",
+      "naziv": "Građevinski fakultet",
+      "web": "http://www.grad.hr"
+    },
+    {
+      "id": "grf",
+      "naziv": "Grafički fakultet",
+      "web": "http://www.grf.hr"
+    },
+    {
+      "id": "kbf",
+      "naziv": "Katolički bogoslovni fakultet",
+      "web": "https://www.kbf.unizg.hr"
+    },
+    {
+      "id": "kif",
+      "naziv": "Kineziološki fakultet",
+      "web": "http://www.kif.hr"
+    },
+    {
+      "id": "mef",
+      "naziv": "Medicinski fakultet",
+      "web": "http://www.mef.hr"
+    },
+    {
+      "id": "simet",
+      "naziv": "Metalurški fakultet",
+      "web": "http://www.simet.hr"
+    },
+    {
+      "id": "pravo",
+      "naziv": "Pravni fakultet",
+      "web": "http://www.pravo.hr"
+    },
+    {
+      "id": "pbf",
+      "naziv": "Prehrambeno-biotehnološki fakultet",
+      "web": "http://www.pbf.hr"
+    },
+    {
+      "id": "pmf",
+      "naziv": "Prirodoslovno-matematički fakultet",
+      "web": "http://www.pmf.hr"
+    },
+    {
+      "id": "rgn",
+      "naziv": "Rudarsko-geološko-naftni fakultet",
+      "web": "http://www.rgn.hr"
+    },
+    {
+      "id": "sfzg",
+      "naziv": "Stomatološki fakultet",
+      "web": "http://www.sfzg.hr"
+    },
+    {
+      "id": "ttf",
+      "naziv": "Tekstilno–tehnološki fakultet",
+      "web": "http://www.ttf.hr"
+    },
+    {
+      "id": "ufzg",
+      "naziv": "Učiteljski fakultet",
+      "web": "http://www.ufzg.hr"
+    },
+    {
+      "id": "vef",
+      "naziv": "Veterinarski fakultet",
+      "web": "http://www.vef.hr"
+    }
+  ]
+}

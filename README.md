@@ -17,10 +17,16 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 | `pnpm test` | testovi kroz `node --test` |
 | `pnpm build` | produkcijski build |
 | `pnpm start` | pokreće produkcijski build |
+| `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` na bazu iz `DATABASE_URL` |
+| `pnpm test:db` | testovi institucija nad pravim PostgreSQL-om (`DATABASE_URL` na testnu bazu) |
 
 ## Provjera zdravlja
 
 `GET /api/health` vraća `200` i `{"status":"ok"}` uz `Cache-Control: no-store`. Odgovor je namjerno uvijek isti: nema vremena, verzije, okoline ni tajni. `HEAD` vraća `200` (daje ga Next iz `GET`). `OPTIONS` vraća `204`, a `POST`, `PUT`, `PATCH` i `DELETE` `405`, oba sa zaglavljem `Allow: GET, HEAD, OPTIONS`. Ponašanje kroz pokrenuti server provjerava `test/server.test.mjs` u sklopu `pnpm build`. Na tu rutu će se oslanjati `HEALTHCHECK` u Docker slici i probe u Kubernetesu.
+
+## Institucije
+
+Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`.
 
 ## Pravila
 

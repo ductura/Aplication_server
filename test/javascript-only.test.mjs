@@ -51,14 +51,16 @@ test("package.json scripts, packageManager and engines are the reviewed ones", (
     build: "next build && node --test test/build-output.test.mjs test/server.test.mjs",
     start: "next start",
     lint: "eslint . --max-warnings 0",
-    test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs",
+    test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs test/institutions.test.mjs",
+    "test:db": "node --test test/institutions-db.test.mjs",
+    "db:migrate": "node institutions/migrate.js",
   });
   assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
   assert.equal(pkg.engines.node, "^24.11.0 || ^26.0.0");
 });
 
-test("every test file is run by test or build", () => {
-  const run = new Set(`${pkg.scripts.test} ${pkg.scripts.build}`.split(/\s+/));
+test("every test file is run by test, test:db or build", () => {
+  const run = new Set(`${pkg.scripts.test} ${pkg.scripts["test:db"]} ${pkg.scripts.build}`.split(/\s+/));
   const entries = readdirSync(join(ROOT, "test"), { recursive: true, withFileTypes: true });
   for (const e of entries.filter((x) => !x.isDirectory())) {
     const file = relative(ROOT, join(e.parentPath, e.name)).split(/[\\/]/).join("/");

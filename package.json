@@ -12,10 +12,13 @@
     "build": "next build && node --test test/build-output.test.mjs test/server.test.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
-    "test": "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs"
+    "test": "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs test/institutions.test.mjs",
+    "test:db": "node --test test/institutions-db.test.mjs",
+    "db:migrate": "node institutions/migrate.js"
   },
   "dependencies": {
     "next": "16.4.6",
+    "pg": "8.23.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
