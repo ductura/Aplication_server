@@ -12,14 +12,15 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 | Naredba | Što radi |
 | --- | --- |
 | `pnpm install` | instalira ovisnosti prema `pnpm-lock.yaml` |
-| `pnpm dev` | razvojni poslužitelj na `http://localhost:3000` |
+| `pnpm dev` | razvojni poslužitelj na `http://localhost:3110` (`pnpm start` na istom portu) |
 | `pnpm lint` | ESLint (flat config, bez upozorenja) |
 | `pnpm test` | testovi kroz `node --test` |
 | `pnpm build` | produkcijski build |
 | `pnpm start` | pokreće produkcijski build |
-| `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` na bazu iz `DATABASE_URL` |
+| `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` i `admin/migrations` na bazu iz `DATABASE_URL` |
 | `pnpm institutions:podigni` | podiže zatražene instance u bazi Institution_servera (`INSTITUTION_DATABASE_URL`) |
-| `pnpm test:db` | testovi institucija nad pravim PostgreSQL-om (`DATABASE_URL` na testnu bazu) |
+| `pnpm test:db` | testovi institucija i admina nad pravim PostgreSQL-om (`DATABASE_URL` na testnu bazu) |
+| `pnpm admin:stvori <ime> [--zamijeni]` | stvara administratora platforme (ili mu postavlja novu lozinku); lozinka se čita sa stdin |
 
 ## Provjera zdravlja
 
@@ -28,6 +29,26 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 ## Institucije
 
 Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`.
+
+## Administrator platforme
+
+Administrator platforme prijavljuje se korisničkim imenom i lozinkom (ugovor Ductus#2028 c.6993786629 §3.4). Svi računi institucija prijavljuju se samo preko AAI@EduHr (D-09, D-16).
+
+- Tablica `admin.platform_admin` (`admin/migrations/`): `korisnicko_ime` normalizirano (trim, mala slova, `^[a-z0-9._-]{3,40}$`), `lozinka_hash` argon2id (PHC, `node:crypto`), `stvoreno`.
+- `POST /api/admin/prijava` `{korisnickoIme, lozinka}`: samo `application/json`, najviše 4 KB. Krivo ime, kriva lozinka i nepoznata polja daju isti `401 {"greska":"prijava_neuspjesna"}`; hash se provjerava i kad ime ne postoji. Najviše 5 pokušaja u 15 minuta po imenu i po IP-u (zadnji unos `X-Forwarded-For`, dakle onaj koji je dodao edge proxy), zatim `429` i `Retry-After`. Uspjeh vraća `200 {korisnickoIme}` i kolačić `ductura_admin` (HttpOnly, SameSite=Strict, Path=/, 8 h, `Secure` kad je `NODE_ENV=production`).
+- `POST /api/admin/odjava` briše kolačić (`204`). `GET /api/admin/ja` vraća `{korisnickoIme}` ili `401`.
+- Token je potpisan HMAC-SHA256 tajnom iz `DUCTURA_ADMIN_TOKEN_SECRET` (najmanje 32 znaka). Bez nje prijava vraća `503`. Promjena tajne poništava sve sesije.
+- Čuvar za rute administratora je `adminIzZahtjeva(request)` iz `lib/admin-sesija.js`.
+
+Lokalno (lozinka nikad u repo, log ni argumente; `.local/` je u `.gitignore`):
+
+```sh
+export DATABASE_URL=postgres://localhost:5432/ductura
+export DUCTURA_ADMIN_TOKEN_SECRET="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))')"
+pnpm db:migrate
+pnpm admin:stvori daniel   # pita lozinku dvaput, bez prikaza; najmanje 12 znakova
+pnpm dev                   # http://localhost:3110
+```
 
 ## Pravila
 

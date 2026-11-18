@@ -47,14 +47,15 @@ test("package.json declares no TypeScript dependency or typecheck script", () =>
 
 test("package.json scripts, packageManager and engines are the reviewed ones", () => {
   assert.deepEqual(pkg.scripts, {
-    dev: "next dev",
+    dev: "next dev -p 3110",
     build: "next build && node --test test/build-output.test.mjs test/server.test.mjs",
-    start: "next start",
+    start: "next start -p 3110",
     lint: "eslint . --max-warnings 0",
-    test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs test/institutions.test.mjs",
-    "test:db": "node --test --test-concurrency=1 test/institutions-db.test.mjs test/institutions-podigni-db.test.mjs",
-    "db:migrate": "node institutions/migrate.js",
+    test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs test/institutions.test.mjs test/admin-sesija.test.mjs test/admin-prijava.test.mjs",
+    "test:db": "node --test --test-concurrency=1 test/institutions-db.test.mjs test/institutions-podigni-db.test.mjs test/admin-db.test.mjs",
+    "db:migrate": "node institutions/migrate.js && node admin/migrate.js",
     "institutions:podigni": "node institutions/podigni.js",
+    "admin:stvori": "node admin/stvori.js",
   });
   assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
   assert.equal(pkg.engines.node, "^24.11.0 || ^26.0.0");
