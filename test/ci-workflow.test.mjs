@@ -7,7 +7,7 @@ const DIR = new URL("../.github/workflows/", import.meta.url);
 // Normalised to LF so a Windows (CRLF) checkout tests the same content.
 const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
 // The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
-const REVIEWED_SHA256 = "d465fd3544f19853d5aed9f0a88a28b68cda8065926e5985a307ef0adcfd6c13";
+const REVIEWED_SHA256 = "ba84f81898cb26f7dfe906fcb695bb8ca1f6e7bb826651b7cc36e7afe57cea17";
 
 test("ci.yml is the only workflow", () => {
   assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
@@ -26,7 +26,7 @@ test("reviewed workflow: read-only, no privileged triggers, no secrets", () => {
 
 test("reviewed workflow: actions pinned to full SHAs with a version comment", () => {
   const uses = [...ci.matchAll(/^ +- uses: (.+)$/gm)].map((m) => m[1]);
-  assert.equal(uses.length, 3);
+  assert.equal(uses.length, 4);
   for (const u of uses) assert.match(u, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
 });
 
