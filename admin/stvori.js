@@ -73,6 +73,9 @@ function procitajSkriveno(upit) {
 
 /** The first line of a piped stdin. */
 async function procitajCijev() {
+  // One decoder for the whole stream, so a UTF-8 character split across two
+  // chunks is not turned into replacement characters.
+  process.stdin.setEncoding("utf8");
   let tekst = "";
   for await (const dio of process.stdin) {
     tekst += dio;
