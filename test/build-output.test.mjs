@@ -15,11 +15,12 @@ test("build did not generate TypeScript files", () => {
   }
 });
 
-test("/api/health is not prerendered as static content", () => {
+test("API routes are not prerendered as static content", () => {
   const manifest = JSON.parse(readFileSync(join(NEXT, "prerender-manifest.json"), "utf8"));
   const routes = Object.keys(manifest.routes);
   assert.ok(routes.includes("/"), "manifest must list the static home page");
   assert.equal(routes.includes("/api/health"), false);
+  assert.equal(routes.includes("/api/admin/me"), false);
 });
 
 test("home page is rendered in Croatian", () => {

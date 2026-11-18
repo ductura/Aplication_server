@@ -51,7 +51,10 @@ test("package.json scripts, packageManager and engines are the reviewed ones", (
     build: "next build && node --test test/build-output.test.mjs",
     start: "next start",
     lint: "eslint . --max-warnings 0",
-    test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs",
+    test: [
+      "node --test test/health.test.mjs test/require-admin.test.mjs test/admin-me.test.mjs",
+      "test/javascript-only.test.mjs test/ci-workflow.test.mjs",
+    ].join(" "),
   });
   assert.match(pkg.packageManager, /^pnpm@\d+\.\d+\.\d+$/);
   assert.equal(pkg.engines.node, "^24.11.0 || ^26.0.0");
