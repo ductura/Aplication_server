@@ -116,6 +116,7 @@ test("login through the real route and database, then /api/admin/ja with the coo
 const izlazi = [];
 function cli(args, stdin) {
   return new Promise((resolve) => {
+    const dijelovi = Array.isArray(stdin) ? stdin : [stdin];
     const child = spawn(process.execPath, [STVORI, ...args], { env: { ...process.env, DATABASE_URL }, stdio: "pipe" });
     let out = "";
     child.stdout.on("data", (d) => (out += d));
@@ -124,7 +125,14 @@ function cli(args, stdin) {
       izlazi.push(out);
       resolve({ code, out });
     });
-    child.stdin.end(stdin);
+    // Chunks are written apart in time, so the child reads them separately.
+    (async () => {
+      for (const [i, dio] of dijelovi.entries()) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 50));
+        child.stdin.write(dio);
+      }
+      child.stdin.end();
+    })();
   });
 }
 
@@ -157,8 +165,16 @@ test("pnpm admin:stvori: password from stdin only, never printed", async () => {
   r = await cli(["x"], `${LOZINKA}\n`);
   assert.equal(r.code, 1);
 
-  assert.equal(izlazi.length, 7);
+  // A UTF-8 character split across two stdin chunks is decoded whole.
+  const bajtovi = Buffer.from("Sinteticka-š-lozinka\n", "utf8");
+  const sredina = bajtovi.indexOf(Buffer.from("š")) + 1;
+  r = await cli(["utf.admin"], [bajtovi.subarray(0, sredina), bajtovi.subarray(sredina)]);
+  assert.equal(r.code, 0, r.out);
+  const ok = await prijavi({ korisnickoIme: "utf.admin", lozinka: "Sinteticka-š-lozinka" }, "192.0.2.10");
+  assert.equal(ok.status, 200);
+
+  assert.equal(izlazi.length, 8);
   for (const out of izlazi) assert.ok(!out.includes("Sinteticka"), out);
   const { rows } = await pool.query("SELECT korisnicko_ime FROM admin.platform_admin ORDER BY 1");
-  assert.deepEqual(rows.map((x) => x.korisnicko_ime), ["ivo.admin"]);
+  assert.deepEqual(rows.map((x) => x.korisnicko_ime), ["ivo.admin", "utf.admin"]);
 });
