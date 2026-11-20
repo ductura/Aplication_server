@@ -12,22 +12,20 @@ export async function pokreniAplikaciju(t, fakultet, env) {
   // Next bundles the static catalog. Replace it only in a disposable copy.
   const local = join(ROOT, ".local");
   await mkdir(local, { recursive: true });
-  if (relative(await realpath(ROOT), await realpath(local)) !== ".local") {
+  const localPath = await realpath(local);
+  if (relative(await realpath(ROOT), localPath) !== ".local") {
     throw new Error("Direktorij .local mora biti unutar ovog repozitorija.");
   }
-  const dir = await mkdtemp(join(local, "int06-"));
+  const dir = await mkdtemp(join(localPath, "int06-"));
   let child;
   let closed;
   t.after(async () => {
-    try {
-      child?.kill();
-      await closed;
-    } finally {
-      if (relative(await realpath(local), dirname(await realpath(dir))) !== "") {
-        throw new Error("Privremeni direktorij više nije unutar .local.");
-      }
-      await rm(dir, { recursive: true, force: true, maxRetries: 3 });
+    child?.kill();
+    await closed;
+    if (relative(localPath, dirname(await realpath(dir))) !== "") {
+      throw new Error("Privremeni direktorij više nije unutar .local.");
     }
+    await rm(dir, { recursive: true, force: true, maxRetries: 3 });
   });
 
   for (const name of ["app", "admin", "institutions", "lib", "next.config.mjs", "package.json"]) {
@@ -54,7 +52,7 @@ export async function pokreniAplikaciju(t, fakultet, env) {
   return origin;
 }
 
-if (process.send) {
+if (process.send && process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on("disconnect", () => process.exit());
   const { default: next } = await import("next");
   const server = createServer();

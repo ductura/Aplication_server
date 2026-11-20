@@ -22,13 +22,12 @@ function testnaBaza() {
   return url.href;
 }
 
-async function json(url, status, init = {}) {
+async function zahtjev(url, status, init = {}) {
   const odgovor = await fetch(url, {
     ...init, redirect: "error", signal: AbortSignal.timeout(30_000),
   });
   assert.equal(odgovor.status, status, `${init.method ?? "GET"} ${new URL(url).pathname}`);
-  const body = await odgovor.json();
-  return { body, headers: odgovor.headers };
+  return odgovor;
 }
 
 function post(body, headers = {}) {
@@ -46,9 +45,10 @@ test("INT-06: administrator platforme otvara ustanovu, Institution_server potvrÄ
   const token = (await readFile(tokenFile, "utf8")).trim();
   assert.ok(token.length >= 32, "Token provisioninga mora imati najmanje 32 znaka.");
 
-  await json(`${SRV}/api/v1/health`, 200);
-  const simulator = await json(`${ISSUER}/.well-known/openid-configuration`, 200);
-  assert.equal(simulator.body.issuer, ISSUER, "Issuer mora pripadati lokalnom simulatoru INT-01.");
+  const zdravlje = await zahtjev(`${SRV}/api/v1/health`, 200);
+  assert.equal((await zdravlje.json()).state, "ok", "Institution_server mora biti spojen na bazu stoga.");
+  const simulator = await zahtjev(`${ISSUER}/.well-known/openid-configuration`, 200);
+  assert.equal((await simulator.json()).issuer, ISSUER, "Issuer mora pripadati lokalnom simulatoru INT-01.");
 
   const nastavak = randomBytes(6).toString("hex");
   const slug = `int06-${nastavak}`;
@@ -58,7 +58,8 @@ test("INT-06: administrator platforme otvara ustanovu, Institution_server potvrÄ
   const ulaz = { fakultetId: slug, aaiDomena, racuni };
   const interna = `${SRV}/internal/v1/institutions/${slug}`;
   const provjeraSpremnosti = { headers: { authorization: `Bearer ${token}` } };
-  await json(interna, 404, provjeraSpremnosti);
+  const prije = await zahtjev(interna, 404, provjeraSpremnosti);
+  assert.equal(await prije.text(), "");
 
   const korisnickoIme = `demo-admin-${nastavak}`;
   const lozinka = randomBytes(24).toString("base64url");
@@ -79,29 +80,30 @@ test("INT-06: administrator platforme otvara ustanovu, Institution_server potvrÄ
     AAI_OIDC_ISSUER: ISSUER,
   });
 
-  await json(`${app}${ADMIN_RUTA}`, 401, post(ulaz));
-  const prijava = await json(`${app}/api/admin/prijava`, 200, post({ korisnickoIme, lozinka }));
-  assert.equal(prijava.body.korisnickoIme, korisnickoIme);
+  const zabranjeno = await zahtjev(`${app}${ADMIN_RUTA}`, 401, post(ulaz));
+  assert.equal((await zabranjeno.json()).error, "nije_prijavljen");
+  const prijava = await zahtjev(`${app}/api/admin/prijava`, 200, post({ korisnickoIme, lozinka }));
+  assert.equal((await prijava.json()).korisnickoIme, korisnickoIme);
   const cookie = prijava.headers.getSetCookie().find((value) => value.startsWith("ductura_admin="));
   assert.ok(cookie, "Prijava mora izdati sesijski kolaÄiÄ‡ administratora.");
   const sesija = { cookie: cookie.split(";", 1)[0] };
 
-  const katalog = await json(`${app}/api/admin/fakulteti`, 200, { headers: sesija });
-  assert.deepEqual(katalog.body.fakulteti, [fakultet]);
-  const stvorena = await json(`${app}${ADMIN_RUTA}`, 201, post(ulaz, sesija));
-  const { id, provisioning } = stvorena.body.institucija;
+  const katalog = await zahtjev(`${app}/api/admin/fakulteti`, 200, { headers: sesija });
+  assert.deepEqual((await katalog.json()).fakulteti, [fakultet]);
+  const stvorena = await zahtjev(`${app}${ADMIN_RUTA}`, 201, post(ulaz, sesija));
+  const { id, provisioning } = (await stvorena.json()).institucija;
   assert.equal(provisioning.stanje, "aktivna");
   assert.ok(provisioning.institutionServerId, "Odgovor mora sadrÅ¾avati ID instance iz Institution_servera.");
   const institutionId = provisioning.institutionServerId;
 
-  const spremna = await json(interna, 200, provjeraSpremnosti);
-  assert.deepEqual(spremna.body, {
+  const spremna = await zahtjev(interna, 200, provjeraSpremnosti);
+  assert.deepEqual(await spremna.json(), {
     institutionId, slug, displayName: fakultet.naziv, aaiHomeOrg: aaiDomena,
     oidcIssuer: ISSUER, seats: racuni, status: "aktivna",
   });
 
-  const popis = await json(`${app}${ADMIN_RUTA}`, 200, { headers: sesija });
-  const spremljena = popis.body.institucije.find((ustanova) => ustanova.slug === slug);
+  const popis = await zahtjev(`${app}${ADMIN_RUTA}`, 200, { headers: sesija });
+  const spremljena = (await popis.json()).institucije.find((ustanova) => ustanova.slug === slug);
   assert.ok(spremljena, "Otvorena ustanova mora ostati u administratorskom popisu.");
   assert.equal(spremljena.id, id);
   assert.equal(spremljena.provisioning.stanje, "aktivna");
