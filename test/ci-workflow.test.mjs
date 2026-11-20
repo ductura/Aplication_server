@@ -7,7 +7,7 @@ const DIR = new URL("../.github/workflows/", import.meta.url);
 // Normalised to LF so a Windows (CRLF) checkout tests the same content.
 const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
 // The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
-const REVIEWED_SHA256 = "622c5ca87227d0a4c41f11aa8476253feeb728ac01b4714f7cd49dc7f55676f8";
+const REVIEWED_SHA256 = "9fc992ce0df9927c9e26b90dd43c33492557d1ccbf511f37b06c9f10dae1b159";
 
 test("ci.yml is the only workflow", () => {
   assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
@@ -19,7 +19,7 @@ test("ci.yml is exactly the reviewed workflow", () => {
 
 test("reviewed workflow: read-only, no privileged triggers, no secrets", () => {
   assert.doesNotMatch(ci, /pull_request_target|workflow_run|issue_comment|secrets|github\.token|write/);
-  assert.match(ci, /^on:\n {2}pull_request:\n {2}push:\n {4}branches: \[main\]\n\npermissions:\n {2}contents: read\n\n/m);
+  assert.match(ci, /^on:\n {2}pull_request:\n {2}push:\n {4}branches: \[main, migracija\/faza2\]\n\npermissions:\n {2}contents: read\n\n/m);
   assert.equal(ci.match(/^ +permissions:/gm), null, "no job-level permissions");
   assert.equal(ci.match(/actions\/checkout@/g).length, ci.match(/persist-credentials: false/g).length);
 });
