@@ -12,6 +12,7 @@ import {
   kolacicPrijave,
   tajna,
 } from "../lib/admin-sesija.js";
+import { procitajOgranicenTekst } from "../lib/ograniceno-tijelo.js";
 import { MAX_DULJINA, lazniHash, provjeriLozinku } from "./lozinka.js";
 import { OgranicenjePokusaja } from "./ogranicenje.js";
 
@@ -32,27 +33,6 @@ export function normalizirajIme(ime) {
 export function ipIzZahtjeva(request) {
   const zadnji = (request.headers.get("x-forwarded-for") ?? "").split(",").at(-1).trim();
   return zadnji && zadnji.length <= 64 ? zadnji : "nepoznata";
-}
-
-/** The body as text, or null when it is larger than `max` bytes. */
-async function procitajTijelo(request, max) {
-  const duljina = request.headers.get("content-length");
-  if (duljina !== null && !(/^\d{1,9}$/.test(duljina) && Number(duljina) <= max)) return null;
-  if (!request.body) return "";
-  const reader = request.body.getReader();
-  const dijelovi = [];
-  let ukupno = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    ukupno += value.byteLength;
-    if (ukupno > max) {
-      await reader.cancel().catch(() => {});
-      return null;
-    }
-    dijelovi.push(value);
-  }
-  return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(dijelovi));
 }
 
 async function nadjiHashIzBaze(korisnickoIme) {
@@ -78,7 +58,7 @@ export function napraviPrijavu({
     }
     let ulaz;
     try {
-      const tekst = await procitajTijelo(request, MAX_TIJELO);
+      const tekst = await procitajOgranicenTekst(request, MAX_TIJELO);
       if (tekst === null) return json({ greska: "prevelik_zahtjev" }, 413);
       ulaz = JSON.parse(tekst);
     } catch {
