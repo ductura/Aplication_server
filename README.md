@@ -17,7 +17,7 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 | `pnpm test` | testovi kroz `node --test` |
 | `pnpm build` | produkcijski build |
 | `pnpm start` | pokreće produkcijski build |
-| `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` i `admin/migrations` na bazu iz `DATABASE_URL` |
+| `pnpm db:migrate` | primjenjuje migracije iz `institutions/migrations` i `admin/migrations` na bazu iz `DATABASE_OWNER_URL` (bez nje `DATABASE_URL`) |
 | `pnpm instance:podigni` | ponovno šalje zatražene instance Institution_serveru preko HTTP-a (`INSTITUTION_SERVER_URL`, `DUCTURA_PROVISIONING_TOKEN`) |
 | `pnpm test:db` | testovi institucija i admina nad pravim PostgreSQL-om (`DATABASE_URL` na testnu bazu) |
 | `pnpm admin:stvori <ime> [--zamijeni]` | stvara administratora platforme (ili mu postavlja novu lozinku); lozinka se čita sa stdin |
@@ -49,6 +49,15 @@ pnpm db:migrate
 pnpm admin:stvori daniel   # pita lozinku dvaput, bez prikaza; najmanje 12 znakova
 pnpm dev                   # http://localhost:3110
 ```
+
+## Pristup bazi (DAN-1531)
+
+Aplikacija (Next rute i `pnpm instance:podigni`) radi kao uloga najmanjih ovlasti `ductura_app`, koju stvaraju migracije (`institutions/migrations/0004_rls_least_privilege.sql`, `admin/migrations/0002_rls_least_privilege.sql`). Svaka veza iz `DATABASE_URL` radi `SET ROLE ductura_app` i odbija se ako nakon toga nije ta uloga (`institutions/db.js`). Migracije i `pnpm admin:stvori` rade kao vlasnik tablica, preko `DATABASE_OWNER_URL` (bez nje preko `DATABASE_URL`).
+
+- RLS je uključen i forsiran na `admin.platform_admin`, `institutions.institution`, `institutions.account` i `institutions.instance_provisioning`; politike imaju samo `ductura_app` i vlasnik.
+- `ductura_app` čita sve četiri tablice. Smije stvoriti instituciju, njezina slobodna mjesta (samo dok nema zahtjeva) i svjež zahtjev (`zatrazena`) te pomicati zahtjev koji još nije konačan. Ne mijenja administratore, ne veže ni ne mijenja račune (`bind_account` mu nije dostupan), ništa ne briše ni ne prazni i nema pristup knjigama migracija.
+- Matricu pristupa (svaka tablica × operacija × uloga) izvodi `test/pristup-matrica-db.test.mjs` u `pnpm test:db`; nova tablica bez RLS-a ili bez retka u matrici ruši test.
+- U produkciji login uloga iz `DATABASE_URL` treba biti samo član `ductura_app` (`GRANT ductura_app TO <login>`), ne superkorisnik: superkorisnik bi mogao napraviti `RESET ROLE`. Ako uloga `ductura_app` već postoji s pravima SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB ili REPLICATION, migracija staje.
 
 ## Ograničenje tijela zahtjeva
 

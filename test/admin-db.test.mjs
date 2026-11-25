@@ -44,7 +44,7 @@ const hashOf = async (ime) =>
 test("migrations are recorded and a second run applies nothing", async () => {
   assert.deepEqual(await primijeniMigracije(pool), []);
   const { rows } = await pool.query("SELECT name FROM public.admin_migration ORDER BY name");
-  assert.deepEqual(rows.map((r) => r.name), ["0001_platform_admin.sql"]);
+  assert.deepEqual(rows.map((r) => r.name), ["0001_platform_admin.sql", "0002_rls_least_privilege.sql"]);
 });
 
 test("platform_admin: CHECKs refuse unnormalised names and anything but an argon2id hash", async () => {

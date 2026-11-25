@@ -100,12 +100,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error("upotreba: pnpm admin:stvori <korisničko ime> [--zamijeni]  (lozinka se čita sa stdin)");
     process.exit(2);
   }
-  const { dohvatiPool } = await import("../institutions/db.js");
+  const { dohvatiVlasnickiPool } = await import("../institutions/db.js");
   let pool;
   try {
     if (!normalizirajIme(ostalo[0])) throw new AdminGreska("neispravno_ime", "korisničko ime: 3 do 40 znakova a-z, 0-9, točka, crtica ili podvlaka");
     const lozinka = await procitajLozinku();
-    pool = dohvatiPool();
+    pool = dohvatiVlasnickiPool();
     const { korisnickoIme, novo } = await stvoriAdmina({ korisnickoIme: ostalo[0], lozinka, zamijeni }, { pool });
     console.log(novo ? `admin ${korisnickoIme} je stvoren` : `admin ${korisnickoIme} ima novu lozinku`);
   } catch (err) {

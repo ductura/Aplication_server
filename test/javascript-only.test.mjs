@@ -52,7 +52,7 @@ test("package.json scripts, packageManager and engines are the reviewed ones", (
     start: "next start -p 3110",
     lint: "eslint . --max-warnings 0",
     test: "node --test test/health.test.mjs test/javascript-only.test.mjs test/ci-workflow.test.mjs test/institutions.test.mjs test/institutions-podigni.test.mjs test/admin-sesija.test.mjs test/admin-prijava.test.mjs test/admin-fakulteti.test.mjs test/institutions-detalj.test.mjs test/ograniceno-tijelo.test.mjs",
-    "test:db": "node --test --test-concurrency=1 test/institutions-db.test.mjs test/institutions-podigni-db.test.mjs test/institutions-detalj-db.test.mjs test/admin-db.test.mjs",
+    "test:db": "node --test --test-concurrency=1 test/institutions-db.test.mjs test/institutions-podigni-db.test.mjs test/institutions-detalj-db.test.mjs test/admin-db.test.mjs test/pristup-matrica-db.test.mjs",
     "db:migrate": "node institutions/migrate.js && node admin/migrate.js",
     "instance:podigni": "node institutions/podigni.js",
     "admin:stvori": "node admin/stvori.js",
