@@ -6,6 +6,7 @@
 import { podigniNakonStvaranja } from "../../../../institutions/podigni.js";
 import { InstitucijaGreska, popisInstitucija, stvoriInstituciju } from "../../../../institutions/stvori.js";
 import { adminIzZahtjeva } from "../../../../lib/admin-sesija.js";
+import { procitajOgranicenTekst } from "../../../../lib/ograniceno-tijelo.js";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const ALLOW = "GET, HEAD, POST, OPTIONS";
@@ -30,8 +31,9 @@ export async function POST(request) {
   if (!/^application\/json\s*(;|$)/i.test(request.headers.get("content-type") ?? "")) {
     return json({ error: "ocekuje_se_json" }, 415);
   }
-  const text = await request.text();
-  if (Buffer.byteLength(text, "utf8") > MAX_BODY) return json({ error: "prevelik_zahtjev" }, 413);
+  // Invalid UTF-8 becomes U+FFFD, as with request.text() before (lib/ograniceno-tijelo.js).
+  const text = await procitajOgranicenTekst(request, MAX_BODY, { fatal: false });
+  if (text === null) return json({ error: "prevelik_zahtjev" }, 413);
   let ulaz;
   try {
     ulaz = JSON.parse(text);
