@@ -1,6 +1,6 @@
 # Aplication_server
 
-Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) se pokreće na svaki PR i na push u `main` i `migracija/faza2`: install, `pnpm audit`, lint, test, build, testovi nad PostgreSQL-om i zbirni job `ci-ok` (pada ako ijedan stvarni job nije prošao; `dependency-review` se preskače samo na pushu). Workflow je zaključan testom `test/ci-workflow.test.mjs`. Svaki PR prolazi review i QA prije spajanja.
+Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) se pokreće na svaki PR i na push u `main` i `migracija/faza2`: install, `pnpm audit`, lint, test, build, testovi nad PostgreSQL-om i zajednički `secret-scan` i `dependency-review` iz `ductura/.github` (prikvačeni na SHA; `dependency-review` se preskače samo na pushu) i zbirni job `ci-ok` (pada ako ijedan stvarni job nije prošao). `.github/dependabot.yml` tjedno predlaže ažuriranja akcija i npm paketa. Workflow je zaključan testom `test/ci-workflow.test.mjs`. Svaki PR prolazi review i QA prije spajanja.
 
 ## Zahtjevi
 

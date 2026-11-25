@@ -7,7 +7,7 @@ const DIR = new URL("../.github/workflows/", import.meta.url);
 // Normalised to LF so a Windows (CRLF) checkout tests the same content.
 const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
 // The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
-const REVIEWED_SHA256 = "30aef4a5881026f25ef896e7170dd49176b50b50e65c6bc9a70c60d5a47e2f0e";
+const REVIEWED_SHA256 = "fa33031af0f631da5f7c02dbabd1665cf3942ddaf836aa81ae16c6afc958c77d";
 
 test("ci.yml is the only workflow", () => {
   assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
@@ -26,7 +26,7 @@ test("reviewed workflow: read-only, no privileged triggers, no secrets", () => {
 
 test("reviewed workflow: actions pinned to full SHAs with a version comment", () => {
   const uses = [...ci.matchAll(/^ +- uses: (.+)$/gm)].map((m) => m[1]);
-  assert.equal(uses.length, 7);
+  assert.equal(uses.length, 6);
   for (const u of uses) assert.match(u, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
 });
 
@@ -49,14 +49,34 @@ test("reviewed workflow: the database job uses a pinned PostgreSQL image and a t
 test("reviewed workflow: ci-ok is the summary job over every real job and always runs", () => {
   const job = ci.slice(ci.indexOf("\n  ci-ok:\n"));
   assert.match(job, /^ {4}if: always\(\)$/m);
-  assert.match(job, /^ {4}needs: \[check, db, dependency-review\]$/m);
+  assert.match(job, /^ {4}needs: \[check, db, secret-scan, dependency-review\]$/m);
   const jobs = [...ci.slice(ci.indexOf("\njobs:\n")).matchAll(/^ {2}([\w-]+):$/gm)].map((m) => m[1]);
-  assert.deepEqual(jobs, ["check", "db", "dependency-review", "ci-ok"]);
+  assert.deepEqual(jobs, ["check", "db", "secret-scan", "dependency-review", "ci-ok"]);
   assert.match(job, /^ {6}CHECK: \$\{\{ needs\.check\.result \}\}$/m);
   assert.match(job, /^ {6}DB: \$\{\{ needs\.db\.result \}\}$/m);
+  assert.match(job, /^ {6}SECRETS_SCAN: \$\{\{ needs\.secret-scan\.result \}\}$/m);
   assert.match(job, /^ {6}REVIEW: \$\{\{ needs\.dependency-review\.result \}\}$/m);
-  assert.match(job, /^ {10}test "\$CHECK" = success\n {10}test "\$DB" = success\n/m);
+  assert.match(job, /^ {10}test "\$CHECK" = success\n {10}test "\$DB" = success\n {10}test "\$SECRETS_SCAN" = success\n/m);
   assert.doesNotMatch(job, /&&/, "a failure left of && is exempt from errexit");
   assert.match(job, /if \[ "\$EVENT" = pull_request \]; then test "\$REVIEW" = success; else test "\$REVIEW" = skipped; fi/);
   assert.doesNotMatch(job, /continue-on-error|uses:/);
+});
+
+test("reviewed workflow: secret scan and dependency review are the shared ductura/.github workflows, pinned to a full SHA", () => {
+  const calls = [...ci.matchAll(/^ {4}uses: (.+)$/gm)].map((m) => m[1]);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0], /^ductura\/\.github\/\.github\/workflows\/secret-scan\.yml@[0-9a-f]{40} # main$/);
+  assert.match(calls[1], /^ductura\/\.github\/\.github\/workflows\/dependency-review\.yml@[0-9a-f]{40} # main$/);
+  // The secret scan runs on pull requests and pushes alike: no condition on it.
+  const scan = ci.slice(ci.indexOf("\n  secret-scan:\n"), ci.indexOf("\n  dependency-review:\n"));
+  assert.doesNotMatch(scan, /^ {4}if:/m);
+});
+
+test("dependabot.yml: weekly, grouped updates for github-actions and npm, with a cooldown", () => {
+  const dep = readFileSync(new URL("../.github/dependabot.yml", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  assert.match(dep, /^version: 2$/m);
+  for (const eco of ["github-actions", "npm"]) assert.match(dep, new RegExp(`package-ecosystem: ${eco}\\n {4}directory: /\\n`));
+  assert.equal(dep.match(/interval: weekly/g).length, 2);
+  assert.equal(dep.match(/cooldown:/g).length, 2);
+  assert.equal(dep.match(/^ {4}groups:/gm).length, 2);
 });
