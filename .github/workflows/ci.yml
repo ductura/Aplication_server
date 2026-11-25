@@ -69,25 +69,27 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm test:db
 
+  secret-scan:
+    name: secret scan
+    uses: ductura/.github/.github/workflows/secret-scan.yml@97c31e9178438ef0d7e663a609cea1b459a3e3aa # main
+
   dependency-review:
     name: dependency review
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
-        with:
-          fail-on-severity: low
+    uses: ductura/.github/.github/workflows/dependency-review.yml@97c31e9178438ef0d7e663a609cea1b459a3e3aa # main
+    with:
+      fail-on-severity: low
 
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [check, db, dependency-review]
+    needs: [check, db, secret-scan, dependency-review]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       CHECK: ${{ needs.check.result }}
       DB: ${{ needs.db.result }}
+      SECRETS_SCAN: ${{ needs.secret-scan.result }}
       REVIEW: ${{ needs.dependency-review.result }}
       EVENT: ${{ github.event_name }}
     steps:
@@ -95,4 +97,5 @@ jobs:
       - run: |
           test "$CHECK" = success
           test "$DB" = success
+          test "$SECRETS_SCAN" = success
           if [ "$EVENT" = pull_request ]; then test "$REVIEW" = success; else test "$REVIEW" = skipped; fi
