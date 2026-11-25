@@ -93,5 +93,6 @@ jobs:
     steps:
       # dependency-review is skipped by rule on push; on a pull request it must succeed.
       - run: |
-          test "$CHECK" = success && test "$DB" = success
+          test "$CHECK" = success
+          test "$DB" = success
           if [ "$EVENT" = pull_request ]; then test "$REVIEW" = success; else test "$REVIEW" = skipped; fi

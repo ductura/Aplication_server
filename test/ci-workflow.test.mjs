@@ -7,7 +7,7 @@ const DIR = new URL("../.github/workflows/", import.meta.url);
 // Normalised to LF so a Windows (CRLF) checkout tests the same content.
 const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
 // The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
-const REVIEWED_SHA256 = "1c2962dbacbd080f378fa2630e37047c1ba1cab892d24d1a7275cc58bf757300";
+const REVIEWED_SHA256 = "30aef4a5881026f25ef896e7170dd49176b50b50e65c6bc9a70c60d5a47e2f0e";
 
 test("ci.yml is the only workflow", () => {
   assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
@@ -55,7 +55,8 @@ test("reviewed workflow: ci-ok is the summary job over every real job and always
   assert.match(job, /^ {6}CHECK: \$\{\{ needs\.check\.result \}\}$/m);
   assert.match(job, /^ {6}DB: \$\{\{ needs\.db\.result \}\}$/m);
   assert.match(job, /^ {6}REVIEW: \$\{\{ needs\.dependency-review\.result \}\}$/m);
-  assert.match(job, /test "\$CHECK" = success && test "\$DB" = success/);
+  assert.match(job, /^ {10}test "\$CHECK" = success\n {10}test "\$DB" = success\n/m);
+  assert.doesNotMatch(job, /&&/, "a failure left of && is exempt from errexit");
   assert.match(job, /if \[ "\$EVENT" = pull_request \]; then test "\$REVIEW" = success; else test "\$REVIEW" = skipped; fi/);
   assert.doesNotMatch(job, /continue-on-error|uses:/);
 });
