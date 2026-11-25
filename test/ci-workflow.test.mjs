@@ -7,7 +7,7 @@ const DIR = new URL("../.github/workflows/", import.meta.url);
 // Normalised to LF so a Windows (CRLF) checkout tests the same content.
 const ci = readFileSync(new URL("ci.yml", DIR), "utf8").replace(/\r\n/g, "\n");
 // The reviewed ci.yml, byte for byte (LF). Any edit must update this hash in the same PR.
-const REVIEWED_SHA256 = "9fc992ce0df9927c9e26b90dd43c33492557d1ccbf511f37b06c9f10dae1b159";
+const REVIEWED_SHA256 = "30aef4a5881026f25ef896e7170dd49176b50b50e65c6bc9a70c60d5a47e2f0e";
 
 test("ci.yml is the only workflow", () => {
   assert.deepEqual(readdirSync(DIR), ["ci.yml"]);
@@ -30,13 +30,13 @@ test("reviewed workflow: actions pinned to full SHAs with a version comment", ()
   for (const u of uses) assert.match(u, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/);
 });
 
-test("reviewed workflow: install, lint, test, build and the database tests run in order", () => {
+test("reviewed workflow: install, lint, test, build and the database tests run in order (then the ci-ok script)", () => {
   const runs = [...ci.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1]);
   const install = "pnpm install --frozen-lockfile";
   const audit = "pnpm audit --audit-level low";
   assert.deepEqual(runs, [
     "node --version", install, audit, "pnpm lint", "pnpm test", "pnpm build",
-    install, "pnpm db:migrate", "pnpm test:db",
+    install, "pnpm db:migrate", "pnpm test:db", "|",
   ]);
   assert.doesNotMatch(ci, /continue-on-error|if: false/);
 });
@@ -44,4 +44,19 @@ test("reviewed workflow: install, lint, test, build and the database tests run i
 test("reviewed workflow: the database job uses a pinned PostgreSQL image and a test database", () => {
   assert.match(ci, /^ {8}image: mirror\.gcr\.io\/library\/postgres:[\w.-]+@sha256:[0-9a-f]{64}$/m);
   assert.match(ci, /^ {6}DATABASE_URL: postgres:\/\/postgres@127\.0\.0\.1:5432\/ductura_test$/m);
+});
+
+test("reviewed workflow: ci-ok is the summary job over every real job and always runs", () => {
+  const job = ci.slice(ci.indexOf("\n  ci-ok:\n"));
+  assert.match(job, /^ {4}if: always\(\)$/m);
+  assert.match(job, /^ {4}needs: \[check, db, dependency-review\]$/m);
+  const jobs = [...ci.slice(ci.indexOf("\njobs:\n")).matchAll(/^ {2}([\w-]+):$/gm)].map((m) => m[1]);
+  assert.deepEqual(jobs, ["check", "db", "dependency-review", "ci-ok"]);
+  assert.match(job, /^ {6}CHECK: \$\{\{ needs\.check\.result \}\}$/m);
+  assert.match(job, /^ {6}DB: \$\{\{ needs\.db\.result \}\}$/m);
+  assert.match(job, /^ {6}REVIEW: \$\{\{ needs\.dependency-review\.result \}\}$/m);
+  assert.match(job, /^ {10}test "\$CHECK" = success\n {10}test "\$DB" = success\n/m);
+  assert.doesNotMatch(job, /&&/, "a failure left of && is exempt from errexit");
+  assert.match(job, /if \[ "\$EVENT" = pull_request \]; then test "\$REVIEW" = success; else test "\$REVIEW" = skipped; fi/);
+  assert.doesNotMatch(job, /continue-on-error|uses:/);
 });

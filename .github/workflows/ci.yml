@@ -78,3 +78,21 @@ jobs:
       - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
         with:
           fail-on-severity: low
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [check, db, dependency-review]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      CHECK: ${{ needs.check.result }}
+      DB: ${{ needs.db.result }}
+      REVIEW: ${{ needs.dependency-review.result }}
+      EVENT: ${{ github.event_name }}
+    steps:
+      # dependency-review is skipped by rule on push; on a pull request it must succeed.
+      - run: |
+          test "$CHECK" = success
+          test "$DB" = success
+          if [ "$EVENT" = pull_request ]; then test "$REVIEW" = success; else test "$REVIEW" = skipped; fi

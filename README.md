@@ -1,6 +1,6 @@
 # Aplication_server
 
-Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) na svakom PR-u radi install, `pnpm audit`, lint, test i build; workflow je zaključan testom `test/ci-workflow.test.mjs`. Docker sliku i Kubernetes manifeste dodaju sljedeći PR-ovi zadatka DAN-1103; svaki PR prolazi review i QA prije spajanja.
+Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) se pokreće na svaki PR i na push u `main` i `migracija/faza2`: install, `pnpm audit`, lint, test, build, testovi nad PostgreSQL-om i zbirni job `ci-ok` (pada ako ijedan stvarni job nije prošao; `dependency-review` se preskače samo na pushu). Workflow je zaključan testom `test/ci-workflow.test.mjs`. Svaki PR prolazi review i QA prije spajanja.
 
 ## Zahtjevi
 
@@ -28,7 +28,7 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 
 ## Institucije
 
-Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`. Instanca se podiže samo preko HTTP-a (`POST /internal/v1/institutions` na Institution_serveru); Aplication_server nema pristup bazi Institution_servera. Varijable okoline su u [`.env.example`](.env.example).
+Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`, `GET /api/admin/institutions/[id]` (institucija sa stanjem zahtjeva za instancu, brojem pokušaja i računima po ulozi; nepoznat ili neispravan `id` daje `404`) i `POST /api/admin/institutions/[id]/ponovi` (jedan novi pokušaj podizanja instance za institucije u stanju `zatrazena` ili `u_izradi`; `aktivna` i `greska` daju `409` bez poziva Institution_servera). Sve su iza sesije administratora platforme. Instanca se podiže samo preko HTTP-a (`POST /internal/v1/institutions` na Institution_serveru); Aplication_server nema pristup bazi Institution_servera. Varijable okoline su u [`.env.example`](.env.example).
 
 ## Administrator platforme
 
@@ -49,6 +49,10 @@ pnpm db:migrate
 pnpm admin:stvori daniel   # pita lozinku dvaput, bez prikaza; najmanje 12 znakova
 pnpm dev                   # http://localhost:3110
 ```
+
+## Ograničenje tijela zahtjeva
+
+Tijela zahtjeva čitaju se kroz `lib/ograniceno-tijelo.js` (`procitajOgranicenoTijelo`, `procitajOgranicenTekst`): neispravan ili preveliki `Content-Length` odbija se prije čitanja prvog bajta, a tijelo bez njega ili s lažnim brojem broji se tijekom strujanja i prekida čim prijeđe granicu. Prekoračenje daje `413`. Granice su 4 KB za `POST /api/admin/prijava` i 16 KB za `POST /api/admin/institutions`.
 
 ## Pravila
 
