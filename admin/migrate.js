@@ -54,8 +54,8 @@ export async function primijeniMigracije(pool) {
 
 // `pnpm db:migrate`
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { dohvatiPool } = await import("../institutions/db.js");
-  const pool = dohvatiPool();
+  const { dohvatiVlasnickiPool } = await import("../institutions/db.js");
+  const pool = dohvatiVlasnickiPool();
   try {
     const applied = await primijeniMigracije(pool);
     console.log(applied.length ? `admin applied: ${applied.join(", ")}` : "admin up to date");
