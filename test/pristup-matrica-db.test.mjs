@@ -270,11 +270,26 @@ test("every flow of the application works through the application pool", async (
     assert.ok((await popisInstitucija({ pool: app })).some((i) => i.id === nova.id));
     // aktivna is final for the application: a second run finds nothing to raise.
     assert.deepEqual(await podigniInstance({ pool: app, klijent, institutionId: nova.id }), []);
+    assert.deepEqual(await podigniInstance({ pool: app, klijent, institutionId: nova.id, ponoviGresku: true }), []);
+
+    // greska: the admin's retry may take it back to u_izradi (0005), a run may not.
+    const odbijena = await stvoriInstituciju(
+      { fakultetId: "agr", aaiDomena: "agr.example.hr", issuer: ISSUER, racuni: { institution_admin: 1 } },
+      { pool: app },
+    );
+    lazni.odgovor = () => ({ status: 409, body: { greska: "slug_zauzet" } });
+    assert.equal((await podigniInstance({ pool: app, klijent, institutionId: odbijena.id }))[0].stanje, "greska");
+    lazni.vratiZadano();
+    assert.deepEqual(await podigniInstance({ pool: app, klijent, institutionId: odbijena.id }), []);
+    const [ponovo] = await podigniInstance({ pool: app, klijent, institutionId: odbijena.id, ponoviGresku: true, pokusaja: 1 });
+    assert.equal(ponovo.stanje, "aktivna");
+    assert.equal((await dohvatiDetalj(odbijena.id, { pool: app })).provisioning.kodGreske, null);
   } finally {
     await app.end();
     await lazni.zatvori();
-    await pool.query("DELETE FROM institutions.instance_provisioning WHERE institution_id IN (SELECT id FROM institutions.institution WHERE slug = 'fer')");
-    await pool.query("DELETE FROM institutions.account WHERE institution_id IN (SELECT id FROM institutions.institution WHERE slug = 'fer')");
-    await pool.query("DELETE FROM institutions.institution WHERE slug = 'fer'");
+    const nove = "SELECT id FROM institutions.institution WHERE slug IN ('fer', 'agr')";
+    await pool.query(`DELETE FROM institutions.instance_provisioning WHERE institution_id IN (${nove})`);
+    await pool.query(`DELETE FROM institutions.account WHERE institution_id IN (${nove})`);
+    await pool.query("DELETE FROM institutions.institution WHERE slug IN ('fer', 'agr')");
   }
 });

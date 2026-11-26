@@ -28,7 +28,7 @@ Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript b
 
 ## Institucije
 
-Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`, `GET /api/admin/institutions/[id]` (institucija sa stanjem zahtjeva za instancu, brojem pokušaja i računima po ulozi; nepoznat ili neispravan `id` daje `404`) i `POST /api/admin/institutions/[id]/ponovi` (jedan novi pokušaj podizanja instance za institucije u stanju `zatrazena` ili `u_izradi`; `aktivna` i `greska` daju `409` bez poziva Institution_servera). Sve su iza sesije administratora platforme. Instanca se podiže samo preko HTTP-a (`POST /internal/v1/institutions` na Institution_serveru); Aplication_server nema pristup bazi Institution_servera. Varijable okoline su u [`.env.example`](.env.example).
+Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi i zahtjeve za instancu na Institution_serveru. Rute su `POST` i `GET /api/admin/institutions`, `GET /api/admin/institutions/[id]` (institucija sa stanjem zahtjeva za instancu, brojem pokušaja i računima po ulozi; nepoznat ili neispravan `id` daje `404`) i `POST /api/admin/institutions/[id]/ponovi` (jedan novi pokušaj podizanja instance za institucije u stanju `zatrazena`, `u_izradi` ili `greska`; `aktivna` daje `409` bez poziva Institution_servera, a drugi istodobni pokušaj `409` `u_toku`). Sve su iza sesije administratora platforme. Instanca se podiže samo preko HTTP-a (`POST /internal/v1/institutions` na Institution_serveru); Aplication_server nema pristup bazi Institution_servera. Varijable okoline su u [`.env.example`](.env.example).
 
 ## Administrator platforme
 

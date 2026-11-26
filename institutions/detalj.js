@@ -1,7 +1,8 @@
 // One institution with the state of its instance request and its attempts,
 // and a manual retry of that one request (GET /api/admin/institutions/{id},
 // POST /api/admin/institutions/{id}/ponovi). The retry is the same step as
-// `pnpm instance:podigni`, for a single institution (institutions/podigni.js).
+// `pnpm instance:podigni`, for a single institution (institutions/podigni.js),
+// and unlike it also starts again from greska.
 //
 // There is no separate attempts table: every attempt is recorded on the
 // instance_provisioning row (attempts, last_attempt_at, last_error, 0002),
@@ -12,7 +13,9 @@ import { konfiguracija, PodizanjeGreska, podigniInstance } from "./podigni.js";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CEKA = new Set(["zatrazena", "u_izradi"]);
+// States a retry may start from. greska is retried only here, on an admin's
+// request (DAN-1532, migration 0005); aktivna is final.
+const PONOVLJIVO = new Set(["zatrazena", "u_izradi", "greska"]);
 
 const json = (body, status) => Response.json(body, { status, headers: NO_STORE });
 
@@ -74,8 +77,10 @@ export async function obradiDetalj(request, id, { dohvati = dohvatiDetalj } = {}
 }
 
 /**
- * POST handler body: one attempt for an institution in zatrazena or u_izradi.
- * aktivna and greska are final: 409 without calling Institution_server.
+ * POST handler body: one attempt for an institution in zatrazena, u_izradi or
+ * greska. aktivna is final: 409 without calling Institution_server. The
+ * attempt is tied to the attempt count read here, so two retries sent from the
+ * same view raise the instance once; the other gets 409 u_toku.
  * `deps` (dohvati, podigni, konfiguriraj) are replaceable for tests.
  */
 export async function obradiPonovi(
@@ -88,7 +93,7 @@ export async function obradiPonovi(
   const prije = await dohvati(id);
   if (!prije) return json({ error: "nepoznata_institucija" }, 404);
   const stanje = prije.provisioning.stanje;
-  if (!CEKA.has(stanje)) return json({ error: "stanje_konacno", stanje }, 409);
+  if (!PONOVLJIVO.has(stanje)) return json({ error: "stanje_konacno", stanje }, 409);
   let klijent;
   try {
     klijent = konfiguriraj();
@@ -96,12 +101,17 @@ export async function obradiPonovi(
     if (err instanceof PodizanjeGreska) return json({ error: "podizanje_nije_podeseno" }, 503);
     throw err;
   }
-  const [rezultat] = await podigni({ klijent, institutionId: prije.id });
-  // Another run holds the request, or it left zatrazena/u_izradi meanwhile:
-  // no attempt was made by this call.
+  const [rezultat] = await podigni({
+    klijent,
+    institutionId: prije.id,
+    ponoviGresku: true,
+    pokusaja: prije.pokusaji.ukupno,
+  });
+  // Another run holds the request or made an attempt meanwhile, or the request
+  // became aktivna: no attempt was made by this call.
   if (!rezultat || rezultat.stanje === null) {
     const sada = (await dohvati(id))?.provisioning.stanje ?? stanje;
-    return json({ error: CEKA.has(sada) ? "u_toku" : "stanje_konacno", stanje: sada }, 409);
+    return json({ error: PONOVLJIVO.has(sada) ? "u_toku" : "stanje_konacno", stanje: sada }, 409);
   }
   return json({ institucija: await dohvati(id) }, 200);
 }

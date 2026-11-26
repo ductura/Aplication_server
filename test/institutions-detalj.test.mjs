@@ -96,17 +96,15 @@ test("GET answers with the institution, its request state and the attempts", asy
   assert.equal(institucija.pokusaji.ukupno, 1);
 });
 
-test("POST ponovi on aktivna or greska: 409 without Institution_server", async () => {
-  for (const stanje of ["aktivna", "greska"]) {
-    const deps = { ...nedostupno, dohvati: async () => detalj(stanje) };
-    const res = await obradiPonovi(zahtjev(prijavljen(), "POST"), ID, deps);
-    assert.equal(res.status, 409, stanje);
-    assert.deepEqual(await res.json(), { error: "stanje_konacno", stanje });
-  }
+test("POST ponovi on aktivna: 409 without Institution_server", async () => {
+  const deps = { ...nedostupno, dohvati: async () => detalj("aktivna") };
+  const res = await obradiPonovi(zahtjev(prijavljen(), "POST"), ID, deps);
+  assert.equal(res.status, 409);
+  assert.deepEqual(await res.json(), { error: "stanje_konacno", stanje: "aktivna" });
 });
 
-test("POST ponovi on zatrazena or u_izradi makes one attempt and answers with the new state", async () => {
-  for (const prije of ["zatrazena", "u_izradi"]) {
+test("POST ponovi on zatrazena, u_izradi or greska makes one attempt tied to the attempts it saw", async () => {
+  for (const prije of ["zatrazena", "u_izradi", "greska"]) {
     let stanje = prije;
     const pozivi = [];
     const res = await obradiPonovi(zahtjev(prijavljen(), "POST"), ID, {
@@ -118,10 +116,29 @@ test("POST ponovi on zatrazena or u_izradi makes one attempt and answers with th
         return [{ id: ID, stanje: "aktivna" }];
       },
     });
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 200, prije);
     assert.equal(pozivi.length, 1);
     assert.equal(pozivi[0].institutionId, ID);
+    assert.equal(pozivi[0].ponoviGresku, true);
+    assert.equal(pozivi[0].pokusaja, 1, "the attempt count of the view the retry was sent from");
     assert.equal((await res.json()).institucija.provisioning.stanje, "aktivna");
+  }
+});
+
+test("POST ponovi that made no attempt: u_toku while still retryable, stanje_konacno once aktivna", async () => {
+  for (const [sada, error] of [
+    ["greska", "u_toku"],
+    ["u_izradi", "u_toku"],
+    ["aktivna", "stanje_konacno"],
+  ]) {
+    let stanje = "greska";
+    const res = await obradiPonovi(zahtjev(prijavljen(), "POST"), ID, {
+      dohvati: async () => detalj(stanje),
+      konfiguriraj: () => ({ url: "http://x/internal/v1/institutions", token: "t" }),
+      podigni: async () => ((stanje = sada), [{ id: ID, stanje: null }]),
+    });
+    assert.equal(res.status, 409, sada);
+    assert.deepEqual(await res.json(), { error, stanje: sada });
   }
 });
 
