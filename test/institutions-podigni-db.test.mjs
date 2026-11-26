@@ -115,7 +115,7 @@ for (const [status, body, kod] of [
   [409, { greska: "domena_zauzeta" }, "domena_zauzeta"],
   [400, { greska: "neispravan_unos", polje: "displayName" }, "neispravan_unos"],
 ]) {
-  test(`${status} ${kod}: greska with the code, final and not retried`, async () => {
+  test(`${status} ${kod}: greska with the code, not retried by a run`, async () => {
     const { id } = await stvori("fpzg", "fpzg.example.hr");
     lazni.odgovor = () => ({ status, body });
     const [r] = await podigniInstance({ pool, klijent });

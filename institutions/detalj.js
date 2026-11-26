@@ -108,7 +108,11 @@ export async function obradiPonovi(
     pokusaja: prije.pokusaji.ukupno,
   });
   // Another run holds the request or made an attempt meanwhile, or the request
-  // became aktivna: no attempt was made by this call.
+  // became aktivna: no attempt was made by this call. A retry from an out of
+  // date view that finds the request back in greska also gets 409 u_toku,
+  // although nothing is running: the admin reads the detail again and retries
+  // from the new attempt count (no separate error code, DAN-1532).
+  // The retry is not written to an audit trail; this server has none yet.
   if (!rezultat || rezultat.stanje === null) {
     const sada = (await dohvati(id))?.provisioning.stanje ?? stanje;
     return json({ error: PONOVLJIVO.has(sada) ? "u_toku" : "stanje_konacno", stanje: sada }, 409);
