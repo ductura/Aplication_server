@@ -105,20 +105,96 @@ test("ponovi turns u_izradi into aktivna and records a new attempt", async () =>
   assert.equal(lazni.zahtjevi.length, 2, "aktivna: Institution_server is not called again");
 });
 
-test("ponovi on a request still zatrazena raises it; greska is 409 without a call", async () => {
+// Brings a fresh institution into greska through the route.
+async function uGresku(fakultetId, aaiDomena) {
+  const { id } = await stvori(fakultetId, aaiDomena);
+  lazni.odgovor = () => ({ status: 409, body: { greska: "slug_zauzet" } });
+  const res = await ponovi(id);
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).institucija.provisioning.stanje, "greska");
+  return id;
+}
+
+test("ponovi on a request still zatrazena raises it", async () => {
   const a = await stvori("fpzg", "fpzg.example.hr");
-  const b = await stvori("fer", "fer.example.hr");
   assert.equal((await ponovi(a.id)).status, 200);
   assert.equal(lazni.zahtjevi.length, 1);
-  lazni.odgovor = () => ({ status: 409, body: { greska: "slug_zauzet" } });
-  const rez = await ponovi(b.id);
-  assert.equal(rez.status, 200);
-  assert.equal((await rez.json()).institucija.provisioning.stanje, "greska");
-  const n = lazni.zahtjevi.length;
-  const konacno = await ponovi(b.id);
-  assert.equal(konacno.status, 409);
-  assert.deepEqual(await konacno.json(), { error: "stanje_konacno", stanje: "greska" });
-  assert.equal(lazni.zahtjevi.length, n);
+});
+
+test("ponovi on greska sends the request again and turns it aktivna (DAN-1532)", async () => {
+  const id = await uGresku("fpzg", "fpzg.example.hr");
+  lazni.vratiZadano();
+  const res = await ponovi(id);
+  assert.equal(res.status, 200);
+  const { institucija } = await res.json();
+  assert.equal(institucija.provisioning.stanje, "aktivna");
+  assert.equal(institucija.provisioning.kodGreske, null);
+  assert.equal(institucija.provisioning.zadnjaGreska, null);
+  assert.match(institucija.provisioning.institutionServerId, /^[0-9a-f-]{36}$/);
+  assert.equal(institucija.pokusaji.ukupno, 2);
+  assert.equal(lazni.zahtjevi.length, 2);
+  assert.deepEqual(lazni.zahtjevi[1].tijelo, lazni.zahtjevi[0].tijelo, "the same frozen payload");
+
+  const opet = await ponovi(id);
+  assert.equal(opet.status, 409);
+  assert.deepEqual(await opet.json(), { error: "stanje_konacno", stanje: "aktivna" });
+  assert.equal(lazni.zahtjevi.length, 2);
+});
+
+test("ponovi on greska that fails again stays greska with the new code; a run still skips it", async () => {
+  const id = await uGresku("fpzg", "fpzg.example.hr");
+  lazni.odgovor = () => ({ status: 409, body: { greska: "domena_zauzeta" } });
+  const res = await ponovi(id);
+  assert.equal(res.status, 200);
+  const { institucija } = await res.json();
+  assert.equal(institucija.provisioning.stanje, "greska");
+  assert.equal(institucija.provisioning.kodGreske, "domena_zauzeta");
+  assert.match(institucija.provisioning.zadnjaGreska, /409 domena_zauzeta/);
+  assert.equal(institucija.pokusaji.ukupno, 2);
+  assert.equal(lazni.zahtjevi.length, 2);
+  // `pnpm instance:podigni` never retries greska on its own.
+  assert.deepEqual(await podigniInstance({ pool, klijent: klijent() }), []);
+  assert.equal(lazni.zahtjevi.length, 2);
+
+  // A server error on the retry leaves it u_izradi, so the next run picks it up.
+  lazni.odgovor = () => ({ status: 503, body: {} });
+  const treci = await ponovi(id);
+  assert.equal(treci.status, 200);
+  const p = (await treci.json()).institucija.provisioning;
+  assert.equal(p.stanje, "u_izradi");
+  assert.equal(p.kodGreske, null);
+  assert.equal(lazni.zahtjevi.length, 3);
+});
+
+test("two simultaneous ponovi calls on greska make exactly one attempt", async () => {
+  const id = await uGresku("fpzg", "fpzg.example.hr");
+  lazni.vratiZadano();
+  const [x, y] = await Promise.all([ponovi(id), ponovi(id)]);
+  assert.deepEqual([x.status, y.status].sort(), [200, 409]);
+  assert.equal(lazni.zahtjevi.length, 2, "one call for the greska, one for the retry");
+  const { institucija } = await (await get(id)).json();
+  assert.equal(institucija.pokusaji.ukupno, 2);
+  assert.equal(institucija.provisioning.stanje, "aktivna");
+});
+
+test("a retry from a view that is already out of date makes no attempt, even back in greska", async () => {
+  const id = await uGresku("fpzg", "fpzg.example.hr");
+  // The first retry fails again: greska with attempts 2.
+  assert.equal((await ponovi(id)).status, 200);
+  assert.equal(lazni.zahtjevi.length, 2);
+  // A second retry sent from the view of attempt 1 arrives after it.
+  const [r] = await podigniInstance({ pool, klijent: klijent(), institutionId: id, ponoviGresku: true, pokusaja: 1 });
+  assert.equal(r.stanje, null);
+  assert.equal(lazni.zahtjevi.length, 2);
+  assert.equal((await (await get(id)).json()).institucija.pokusaji.ukupno, 2);
+});
+
+test("a run over all requests, or for one without ponoviGresku, does not take it out of greska", async () => {
+  const id = await uGresku("fpzg", "fpzg.example.hr");
+  lazni.vratiZadano();
+  assert.deepEqual(await podigniInstance({ pool, klijent: klijent(), ponoviGresku: true }), []);
+  assert.deepEqual(await podigniInstance({ pool, klijent: klijent(), institutionId: id }), []);
+  assert.equal(lazni.zahtjevi.length, 1);
 });
 
 test("two simultaneous ponovi calls make exactly one attempt", async () => {

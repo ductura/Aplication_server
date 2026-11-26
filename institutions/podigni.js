@@ -9,7 +9,8 @@
 //   {slug, displayName, aaiHomeOrg, oidcIssuer, seats}
 // and then:
 //   201 or 200          -> aktivna, institutionId kept as institution_server_id
-//   409 or 400          -> greska with Institution_server's code (final)
+//   409 or 400          -> greska with Institution_server's code (not retried
+//                          by a run; only an admin's retry, institutions/detalj.js)
 //   anything else, a network error or a timeout -> stays u_izradi, retried
 // on the next run (`pnpm instance:podigni`).
 import { fileURLToPath } from "node:url";
@@ -139,24 +140,32 @@ export async function posaljiInstituciju(payload, { url, token, timeoutMs = TIME
 
 /**
  * Raises every pending request, oldest first, or only the one given by
- * institutionId. Returns one result per request.
- * @param {{pool?: import("pg").Pool, klijent?: {url: string, token: string, timeoutMs?: number}, institutionId?: string}} [opcije]
+ * institutionId. Returns one result per request. ponoviGresku (only together
+ * with institutionId, from an admin's retry) also takes that request out of
+ * greska; a run over all requests never retries greska on its own.
+ * pokusaja is the attempt count the caller saw: when another attempt was made
+ * since, this call makes none (stanje null), so two retries of the same view
+ * raise the instance once even when the first has already finished.
+ * @param {{pool?: import("pg").Pool, klijent?: {url: string, token: string, timeoutMs?: number}, institutionId?: string, ponoviGresku?: boolean, pokusaja?: number}} [opcije]
  */
-export async function podigniInstance({ pool, klijent, institutionId } = {}) {
+export async function podigniInstance({ pool, klijent, institutionId, ponoviGresku = false, pokusaja } = {}) {
   const izvor = pool ?? dohvatiPool();
   const veza = klijent ?? konfiguracija();
+  const iGreska = Boolean(ponoviGresku && institutionId);
+  const uvjet = { iGreska, pokusaja: institutionId && Number.isSafeInteger(pokusaja) ? pokusaja : null };
   const { rows } = await izvor.query(
     `SELECT institution_id FROM institutions.instance_provisioning
-     WHERE state IN ('zatrazena', 'u_izradi') AND ($1::uuid IS NULL OR institution_id = $1)
+     WHERE (state IN ('zatrazena', 'u_izradi') OR ($2 AND state = 'greska'))
+       AND ($1::uuid IS NULL OR institution_id = $1)
      ORDER BY requested_at, institution_id`,
-    [institutionId ?? null],
+    [institutionId ?? null, iGreska],
   );
   const rezultati = [];
-  for (const { institution_id: id } of rows) rezultati.push(await podigniJednu(izvor, veza, id));
+  for (const { institution_id: id } of rows) rezultati.push(await podigniJednu(izvor, veza, id, uvjet));
   return rezultati;
 }
 
-async function podigniJednu(izvor, veza, id) {
+async function podigniJednu(izvor, veza, id, { iGreska, pokusaja }) {
   const client = await izvor.connect();
   try {
     const {
@@ -167,11 +176,15 @@ async function podigniJednu(izvor, veza, id) {
       const {
         rows: [req],
       } = await client.query(
+        // Under the lock the state and the attempt count are read again: a
+        // request a concurrent retry already sent (and maybe finished, even
+        // back in greska) is not sent a second time.
         `UPDATE institutions.instance_provisioning
-         SET state = 'u_izradi', attempts = attempts + 1, last_attempt_at = now()
-         WHERE institution_id = $1 AND state IN ('zatrazena', 'u_izradi')
+         SET state = 'u_izradi', attempts = attempts + 1, last_attempt_at = now(), error_code = NULL
+         WHERE institution_id = $1 AND (state IN ('zatrazena', 'u_izradi') OR ($2 AND state = 'greska'))
+           AND ($3::integer IS NULL OR attempts = $3)
          RETURNING payload`,
-        [id],
+        [id, iGreska, pokusaja],
       );
       if (!req) return { id, stanje: null };
       const slug = req.payload?.slug;

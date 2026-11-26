@@ -25,7 +25,7 @@ Model je preuzet iz `ductura/Institution_server`, ne izmišljen:
 
 - `institutions.institution`: fakultet, naziv, slug, AAI domena (`hrEduPersonHomeOrg`, mala slova), OIDC issuer, postavke upisa i vrijeme stvaranja. Fakultet i AAI domena su jedinstveni.
 - `institutions.account`: računi po ulozi (`student`, `teacher`, `institution_admin`, `network_engineer`), zadani brojem. Račun je mjesto bez lozinke. Uz osobu se veže pri prvoj prijavi preko AAI@EduHr (D-09), funkcijom `institutions.bind_account(institucija, uloga, issuer, hrEduPersonUniqueID)`. Ona uzima najniže slobodno mjesto te uloge, a ista osoba dobiva isto mjesto. Mrežni inženjer ima `requires_fido2`. `app_admin` je na razini države i ovdje nema računa.
-- `institutions.instance_provisioning`: zahtjev za instancu. Stanje ide samo naprijed, `zatrazena` → `u_izradi` → `aktivna` ili `greska`. `payload` se ne mijenja i sadrži `slug`, `display_name`, `aai_home_org`, `oidc_issuer`, postavke, broj računa po ulozi (`accounts`) i prvog admina institucije (`first_admin.account_id`). Uz zahtjev se vode `attempts`, `last_attempt_at`, `last_error`, `institution_server_id` (samo za `aktivna`) i `error_code` (samo za `greska`).
+- `institutions.instance_provisioning`: zahtjev za instancu. Stanje ide naprijed, `zatrazena` → `u_izradi` → `aktivna` ili `greska`; iz `greska` jedino ponovni pokušaj administratora vraća zahtjev u `u_izradi` (migracija 0005), a `aktivna` je konačna. `payload` se ne mijenja i sadrži `slug`, `display_name`, `aai_home_org`, `oidc_issuer`, postavke, broj računa po ulozi (`accounts`) i prvog admina institucije (`first_admin.account_id`). Uz zahtjev se vode `attempts`, `last_attempt_at`, `last_error`, `institution_server_id` (samo za `aktivna`) i `error_code` (samo za `greska`).
 
 ## Stvaranje
 
@@ -60,7 +60,7 @@ Brojevi računa (`seats`) uzimaju se iz `payload.accounts` zahtjeva. Vrijeme če
 | Odgovor Institution_servera | Stanje zahtjeva |
 | --- | --- |
 | `201` ili `200` s `institutionId` za taj slug | `aktivna`, `institution_server_id` = `institutionId` |
-| `409` (`slug_zauzet`, `domena_zauzeta`) ili `400` (`neispravan_unos`) | `greska`, kod u `error_code`; konačno, ne ponavlja se |
+| `409` (`slug_zauzet`, `domena_zauzeta`) ili `400` (`neispravan_unos`) | `greska`, kod u `error_code`; `pnpm instance:podigni` ga ne ponavlja, ponavlja ga samo administrator (`POST /api/admin/institutions/[id]/ponovi`) |
 | `401`, `5xx`, drugi status, mrežna greška ili istek vremena | ostaje `u_izradi` s razlogom u `last_error`; sljedeće pokretanje ponavlja |
 
 - Odmah nakon uspješnog `POST /api/admin/institutions` poslužitelj jednom pokušava podići tu instancu i u odgovoru `201` vraća stanje (`provisioning.stanje`, `institutionServerId`, `kodGreske`, `zadnjaGreska`). Institucija je stvorena i kad Institution_server odbije ili ne odgovori.

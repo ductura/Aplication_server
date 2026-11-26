@@ -115,7 +115,7 @@ for (const [status, body, kod] of [
   [409, { greska: "domena_zauzeta" }, "domena_zauzeta"],
   [400, { greska: "neispravan_unos", polje: "displayName" }, "neispravan_unos"],
 ]) {
-  test(`${status} ${kod}: greska with the code, final and not retried`, async () => {
+  test(`${status} ${kod}: greska with the code, not retried by a run`, async () => {
     const { id } = await stvori("fpzg", "fpzg.example.hr");
     lazni.odgovor = () => ({ status, body });
     const [r] = await podigniInstance({ pool, klijent });
@@ -178,7 +178,7 @@ test("a request another run is raising right now is skipped, not sent twice", as
   assert.equal((await podigniInstance({ pool, klijent }))[0].stanje, "aktivna");
 });
 
-test("state greska only follows u_izradi, carries a code and is final", async () => {
+test("state greska only follows u_izradi, carries a code and goes only back to u_izradi without it", async () => {
   const { id } = await stvori("fpzg", "fpzg.example.hr");
   const set = (state, kod = "slug_zauzet") =>
     pool.query("UPDATE institutions.instance_provisioning SET state = $2, error_code = $3 WHERE institution_id = $1", [id, state, kod]);
@@ -187,7 +187,9 @@ test("state greska only follows u_izradi, carries a code and is final", async ()
   await assert.rejects(set("greska", null), { code: "23514" });
   await assert.rejects(set("greska", "Nije kod"), { code: "23514" });
   await set("greska");
-  for (const s of ["zatrazena", "u_izradi"]) await assert.rejects(set(s), /from greska/);
+  await assert.rejects(set("zatrazena", null), /from greska to zatrazena/);
+  await assert.rejects(set("aktivna", null), /from greska to aktivna/);
+  await assert.rejects(set("u_izradi"), { code: "23514" }, "error_code goes with greska");
   await assert.rejects(
     pool.query(
       "UPDATE institutions.instance_provisioning SET institution_server_id = gen_random_uuid() WHERE institution_id = $1",
@@ -196,6 +198,15 @@ test("state greska only follows u_izradi, carries a code and is final", async ()
     { code: "23514" },
     "institution_server_id only on aktivna",
   );
+  // The admin's retry (0005): greska -> u_izradi, and from there on as usual.
+  await set("u_izradi", null);
+  await set("greska");
+  await set("u_izradi", null);
+  await pool.query("UPDATE institutions.instance_provisioning SET state = 'aktivna', activated_at = now() WHERE institution_id = $1", [id]);
+  // aktivna stays final.
+  for (const s of ["zatrazena", "u_izradi", "greska"]) {
+    await assert.rejects(set(s, s === "greska" ? "slug_zauzet" : null), new RegExp(`from aktivna to ${s}`));
+  }
 });
 
 test("podigniNakonStvaranja raises only that institution, and waits without configuration", async () => {
