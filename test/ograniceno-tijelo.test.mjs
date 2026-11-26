@@ -131,7 +131,7 @@ test("POST /api/admin/prijava: an oversized chunked body gets 413 after at most 
   const { tok, stanje } = brojeciTok(1000, 100);
   let res = await prijava(tokZahtjev(url, tok));
   assert.equal(res.status, 413);
-  assert.deepEqual(await res.json(), { greska: "prevelik_zahtjev" });
+  assert.deepEqual(await res.json(), { error: "prevelik_zahtjev" });
   assert.ok(stanje.povuceno <= 4 * 1024 + 1000, `pulled ${stanje.povuceno}`);
   assert.equal(stanje.otkazano, true);
 

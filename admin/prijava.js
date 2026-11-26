@@ -52,17 +52,17 @@ export function napraviPrijavu({
   sad = Date.now,
 } = {}) {
   return async function POST(request) {
-    if (!tajna()) return json({ greska: "prijava_nije_dostupna" }, 503);
+    if (!tajna()) return json({ error: "prijava_nije_dostupna" }, 503);
     if (!/^application\/json\s*(;|$)/i.test(request.headers.get("content-type") ?? "")) {
-      return json({ greska: "ocekuje_se_json" }, 415);
+      return json({ error: "ocekuje_se_json" }, 415);
     }
     let ulaz;
     try {
       const tekst = await procitajOgranicenTekst(request, MAX_TIJELO);
-      if (tekst === null) return json({ greska: "prevelik_zahtjev" }, 413);
+      if (tekst === null) return json({ error: "prevelik_zahtjev" }, 413);
       ulaz = JSON.parse(tekst);
     } catch {
-      return json({ greska: "neispravan_json" }, 400);
+      return json({ error: "neispravan_json" }, 400);
     }
 
     const objekt = ulaz !== null && typeof ulaz === "object" && !Array.isArray(ulaz);
@@ -70,7 +70,7 @@ export function napraviPrijavu({
     const kljucevi = [`ip:${ipIzZahtjeva(request)}`, ...(ime ? [`ime:${ime}`] : [])];
     const pokusaj = ogranicenje.zauzmi(kljucevi, sad());
     if (!pokusaj.dopusteno) {
-      return json({ greska: "previse_pokusaja" }, 429, { "Retry-After": String(pokusaj.retryAfterS) });
+      return json({ error: "previse_pokusaja" }, 429, { "Retry-After": String(pokusaj.retryAfterS) });
     }
 
     const lozinka = objekt ? ulaz.lozinka : undefined;
@@ -81,7 +81,7 @@ export function napraviPrijavu({
     // Always one argon2id verification, so the answer takes as long for an
     // unknown name or a malformed body as for a wrong password.
     const tocna = await provjeri(ispravanOblik ? lozinka : "-", hash ?? (await lazniHash()));
-    if (!ispravanOblik || hash === null || !tocna) return json({ greska: "prijava_neuspjesna" }, 401);
+    if (!ispravanOblik || hash === null || !tocna) return json({ error: "prijava_neuspjesna" }, 401);
 
     pokusaj.otpusti();
     return json({ korisnickoIme: ime }, 200, { "Set-Cookie": kolacicPrijave(izdajToken(ime, sad())) });
@@ -94,7 +94,7 @@ export function odjava() {
 
 export function ja(request) {
   const admin = adminIzZahtjeva(request);
-  return admin ? json({ korisnickoIme: admin.korisnickoIme }, 200) : json({ greska: "nije_prijavljen" }, 401);
+  return admin ? json({ korisnickoIme: admin.korisnickoIme }, 200) : json({ error: "nije_prijavljen" }, 401);
 }
 
 /** OPTIONS and 405 handlers for a route that allows `allow`. */

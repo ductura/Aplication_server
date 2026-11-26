@@ -1,6 +1,6 @@
 # Aplication_server
 
-Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) se pokreće na svaki PR i na push u `main` i `migracija/faza2`: install, `pnpm audit`, lint, test, build, testovi nad PostgreSQL-om i zbirni job `ci-ok` (pada ako ijedan stvarni job nije prošao; `dependency-review` se preskače samo na pushu). Workflow je zaključan testom `test/ci-workflow.test.mjs`. Svaki PR prolazi review i QA prije spajanja.
+Aplikacijski poslužitelj Ducture: Next.js (App Router) na Node.js, JavaScript bez TypeScripta. CI (`.github/workflows/ci.yml`) se pokreće na svaki PR i na push u `main` i `migracija/faza2`: install, `pnpm audit`, lint, test, build, testovi nad PostgreSQL-om i zajednički `secret-scan` i `dependency-review` iz `ductura/.github` (prikvačeni na SHA; `dependency-review` se preskače samo na pushu) i zbirni job `ci-ok` (pada ako ijedan stvarni job nije prošao). `.github/dependabot.yml` tjedno predlaže ažuriranja akcija i npm paketa. Workflow je zaključan testom `test/ci-workflow.test.mjs`. Svaki PR prolazi review i QA prije spajanja.
 
 ## Zahtjevi
 
@@ -35,7 +35,7 @@ Mapa [`institutions/`](institutions/README.md) čuva fakultete, račune po ulozi
 Administrator platforme prijavljuje se korisničkim imenom i lozinkom (ugovor Ductus#2028 c.6993786629 §3.4). Svi računi institucija prijavljuju se samo preko AAI@EduHr (D-09, D-16).
 
 - Tablica `admin.platform_admin` (`admin/migrations/`): `korisnicko_ime` normalizirano (trim, mala slova, `^[a-z0-9._-]{3,40}$`), `lozinka_hash` argon2id (PHC, `node:crypto`), `stvoreno`.
-- `POST /api/admin/prijava` `{korisnickoIme, lozinka}`: samo `application/json`, najviše 4 KB. Krivo ime, kriva lozinka i nepoznata polja daju isti `401 {"greska":"prijava_neuspjesna"}`; hash se provjerava i kad ime ne postoji. Najviše 5 pokušaja u 15 minuta po imenu i po IP-u (zadnji unos `X-Forwarded-For`, dakle onaj koji je dodao edge proxy), zatim `429` i `Retry-After`. Uspjeh vraća `200 {korisnickoIme}` i kolačić `ductura_admin` (HttpOnly, SameSite=Strict, Path=/, 8 h, `Secure` kad je `NODE_ENV=production`).
+- `POST /api/admin/prijava` `{korisnickoIme, lozinka}`: samo `application/json`, najviše 4 KB. Krivo ime, kriva lozinka i nepoznata polja daju isti `401 {"error":"prijava_neuspjesna"}`; hash se provjerava i kad ime ne postoji. Najviše 5 pokušaja u 15 minuta po imenu i po IP-u (zadnji unos `X-Forwarded-For`, dakle onaj koji je dodao edge proxy), zatim `429` i `Retry-After`. Uspjeh vraća `200 {korisnickoIme}` i kolačić `ductura_admin` (HttpOnly, SameSite=Strict, Path=/, 8 h, `Secure` kad je `NODE_ENV=production`).
 - `POST /api/admin/odjava` briše kolačić (`204`). `GET /api/admin/ja` vraća `{korisnickoIme}` ili `401`.
 - Token je potpisan HMAC-SHA256 tajnom iz `DUCTURA_ADMIN_TOKEN_SECRET` (najmanje 32 znaka). Bez nje prijava vraća `503`. Promjena tajne poništava sve sesije.
 - Čuvar za rute administratora je `adminIzZahtjeva(request)` iz `lib/admin-sesija.js`. Iza njega su `GET`/`POST /api/admin/institutions` i `GET /api/admin/fakulteti` (`200 {"fakulteti":[{id, naziv, web}]}`, popis za obrazac).
