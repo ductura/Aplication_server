@@ -58,7 +58,7 @@ async function neuspjesna(res) {
   assert.equal(res.status, 401);
   assert.equal(res.headers.get("cache-control"), "no-store");
   assert.equal(res.headers.get("set-cookie"), null);
-  assert.deepEqual(await res.json(), { greska: "prijava_neuspjesna" });
+  assert.deepEqual(await res.json(), { error: "prijava_neuspjesna" });
 }
 
 test("success: 200 with the normalised name and a signed 8 h ductura_admin cookie", async () => {
@@ -115,7 +115,7 @@ test("only JSON, at most 4 KB, valid UTF-8", async () => {
   for (const ct of [undefined, "text/plain", "application/x-www-form-urlencoded", "application/jsonx", "multipart/form-data"]) {
     const res = await bez(ct ? { "content-type": ct } : {});
     assert.equal(res.status, 415, String(ct));
-    assert.deepEqual(await res.json(), { greska: "ocekuje_se_json" });
+    assert.deepEqual(await res.json(), { error: "ocekuje_se_json" });
   }
   const ok = await posalji({ korisnickoIme: "ana", lozinka: LOZINKA }, { headers: { "content-type": "Application/JSON; charset=utf-8" } });
   assert.equal(ok.status, 200);
@@ -123,7 +123,7 @@ test("only JSON, at most 4 KB, valid UTF-8", async () => {
   const velik = JSON.stringify({ korisnickoIme: "ana", lozinka: "x".repeat(4200) });
   let res = await posalji(velik, { raw: true });
   assert.equal(res.status, 413);
-  assert.deepEqual(await res.json(), { greska: "prevelik_zahtjev" });
+  assert.deepEqual(await res.json(), { error: "prevelik_zahtjev" });
   // A false Content-Length does not get a larger body through.
   res = await posalji(velik, { raw: true, headers: { "content-length": "10" } });
   assert.equal(res.status, 413);
@@ -148,7 +148,7 @@ test("only JSON, at most 4 KB, valid UTF-8", async () => {
   for (const bad of ["{", "", "nije json", new Uint8Array([0x7b, 0xff, 0x7d])]) {
     res = await posalji(bad, { raw: true });
     assert.equal(res.status, 400);
-    assert.deepEqual(await res.json(), { greska: "neispravan_json" });
+    assert.deepEqual(await res.json(), { error: "neispravan_json" });
   }
   assert.deepEqual(pozivi.nadji, ["ana"]);
 });
@@ -159,7 +159,7 @@ test("without DUCTURA_ADMIN_TOKEN_SECRET login is 503 and nothing is checked", a
   try {
     const res = await posalji({ korisnickoIme: "ana", lozinka: LOZINKA });
     assert.equal(res.status, 503);
-    assert.deepEqual(await res.json(), { greska: "prijava_nije_dostupna" });
+    assert.deepEqual(await res.json(), { error: "prijava_nije_dostupna" });
     assert.equal(pozivi.provjeri, 0);
   } finally {
     process.env.DUCTURA_ADMIN_TOKEN_SECRET = secret;
@@ -175,7 +175,7 @@ test("rate limit per name: 5 failures in 15 min, then 429 with Retry-After, even
   assert.equal(res.status, 429);
   assert.equal(res.headers.get("retry-after"), String(14 * 60));
   assert.equal(res.headers.get("cache-control"), "no-store");
-  assert.deepEqual(await res.json(), { greska: "previse_pokusaja" });
+  assert.deepEqual(await res.json(), { error: "previse_pokusaja" });
   assert.equal(pozivi.provjeri, 5, "a limited attempt checks no password");
   // Another name from a fresh IP is not limited.
   res = await posalji({ korisnickoIme: "ivo", lozinka: "kriva" }, { ip: "10.0.2.2" });
@@ -245,7 +245,7 @@ test("GET /api/admin/ja: the admin of the cookie, else 401", async () => {
   for (const cookie of [undefined, "ductura_admin=", `ductura_admin=${token}x`, `other=${token}`]) {
     res = jaRoute.GET(new Request("http://localhost/api/admin/ja", { headers: cookie ? { cookie } : {} }));
     assert.equal(res.status, 401, String(cookie));
-    assert.deepEqual(await res.json(), { greska: "nije_prijavljen" });
+    assert.deepEqual(await res.json(), { error: "nije_prijavljen" });
   }
 });
 
